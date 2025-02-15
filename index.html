@@ -58,12 +58,15 @@
         }
         
         .page-card {
+            display: block; /* 让链接占满整个卡片 */
+            text-decoration: none; /* 移除链接下划线 */
             background: var(--card-bg);
             border-radius: 8px;
             padding: 1.5rem;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             cursor: pointer;
             border: 1px solid #30363d;
+            color: inherit; /* 继承文字颜色 */
         }
         
         .page-card:hover {
@@ -131,17 +134,15 @@
         </header>
 
         <div class="pages-grid">
-            <div class="page-card animate__animated animate__fadeIn">
+            <a href="brackets.html" class="page-card animate__animated animate__fadeIn">
                 <h3 class="page-title">括号匹配器</h3>
                 <p class="page-description">匹配括号的</p>
-                <a href="brackets.html" class="github-link">View Page →</a>
-            </div>
+            </a>
             
-            <div class="page-card animate__animated animate__fadeIn">
+            <a href="page2.html" class="page-card animate__animated animate__fadeIn">
                 <h3 class="page-title">啥都没有</h3>
                 <p class="page-description">Description of the second HTML page</p>
-                <a href="page2.html" class="github-link">View Page →</a>
-            </div>
+            </a>
             
             <!-- Add more page cards as needed -->
         </div>
