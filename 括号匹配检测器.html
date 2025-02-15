@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>括号匹配检测器</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .description {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            resize: vertical;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+    </style>
+</head>
+<body>
+    <h1>括号匹配检测器</h1>
+    <div class="description">
+        这是一个用于检测文本中括号匹配情况的工具。它可以检查小括号()、中括号[]、大括号{}和尖括号&lt;&gt;的匹配情况。
+        工具会自动识别不匹配的情况，包括括号交叉、多余的右括号或未闭合的左括号，并精确指出第一个错误的位置。
+    </div>
+    <textarea id="input" placeholder="请在此输入包含括号的文本..."></textarea>
+    <button onclick="checkBrackets()">检测</button>
+    <div id="result"></div>
+
+    <script>
+        function checkBrackets() {
+            const input = document.getElementById('input').value;
+            const lines = input.split('\n');
+            const stack = [];
+            let lineNo = 1;
+            let charNo = 1;
+            
+            const pairs = {
+                '(': ')',
+                '[': ']',
+                '{': '}',
+                '<': '>'
+            };
+            
+            // 用于记录每个括号的位置
+            const positions = [];
+            
+            // 遍历每个字符，记录位置信息
+            let totalCharCount = 0;
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                for (let j = 0; j < line.length; j++) {
+                    const char = line[j];
+                    if ('([{<>)}]'.includes(char)) {
+                        positions.push({
+                            char: char,
+                            line: i + 1,
+                            column: j + 1,
+                            index: totalCharCount
+                        });
+                    }
+                    totalCharCount++;
+                }
+                totalCharCount++; // 为换行符加1
+            }
+            
+            // 检查括号匹配
+            for (let pos of positions) {
+                const char = pos.char;
+                
+                if ('([{<'.includes(char)) {
+                    stack.push(pos);
+                } else {
+                    if (stack.length === 0) {
+                        // 多余的右括号
+                        showError(pos.line, pos.column);
+                        selectText(pos.index, pos.index + 1);
+                        return;
+                    }
+                    
+                    const lastOpen = stack[stack.length - 1];
+                    if (pairs[lastOpen.char] === char) {
+                        stack.pop();
+                    } else {
+                        // 括号交叉
+                        showError(pos.line, pos.column);
+                        selectText(pos.index, pos.index + 1);
+                        return;
+                    }
+                }
+            }
+            
+            if (stack.length > 0) {
+                // 未闭合的左括号
+                const lastUnclosed = stack[stack.length - 1];
+                showError(lastUnclosed.line, lastUnclosed.column);
+                selectText(lastUnclosed.index, lastUnclosed.index + 1);
+                return;
+            }
+            
+            // 全部匹配
+            const result = document.getElementById('result');
+            result.className = 'success';
+            result.textContent = '✓ 所有括号匹配正确！';
+        }
+        
+        function showError(line, column) {
+            const result = document.getElementById('result');
+            result.className = 'error';
+            result.textContent = `✗ 括号不匹配：错误位置在第 ${line} 行，第 ${column} 个字符，请修改后重新检测`;
+        }
+        
+        function selectText(start, end) {
+            const textarea = document.getElementById('input');
+            textarea.focus();
+            textarea.setSelectionRange(start, end);
+        }
+    </script>
+</body>
+</html>
