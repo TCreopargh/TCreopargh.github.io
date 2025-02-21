@@ -23,6 +23,23 @@
             margin-bottom: 20px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
+        .controls {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .checkbox-group {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 10px;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
         textarea {
             width: 100%;
             height: 200px;
@@ -67,8 +84,28 @@
 <body>
     <h1>括号匹配检测器</h1>
     <div class="description">
-        这是一个用于检测文本中括号匹配情况的工具。它可以检查小括号()、中括号[]、大括号{}和尖括号&lt;&gt;的匹配情况。
-        工具会自动识别不匹配的情况，包括括号交叉、多余的右括号或未闭合的左括号，并精确指出第一个错误的位置。
+        这是一个用于检测文本中括号匹配情况的工具。您可以选择需要检查的括号类型，工具会自动识别不匹配的情况，
+        包括括号交叉、多余的右括号或未闭合的左括号，并精确指出第一个错误的位置。
+    </div>
+    <div class="controls">
+        <div class="checkbox-group">
+            <label class="checkbox-item">
+                <input type="checkbox" id="checkParentheses" checked>
+                <span>小括号 ()</span>
+            </label>
+            <label class="checkbox-item">
+                <input type="checkbox" id="checkSquare" checked>
+                <span>中括号 []</span>
+            </label>
+            <label class="checkbox-item">
+                <input type="checkbox" id="checkCurly" checked>
+                <span>大括号 {}</span>
+            </label>
+            <label class="checkbox-item">
+                <input type="checkbox" id="checkAngle" checked>
+                <span>尖括号 &lt;&gt;</span>
+            </label>
+        </div>
     </div>
     <textarea id="input" placeholder="请在此输入包含括号的文本..."></textarea>
     <button onclick="checkBrackets()">检测</button>
@@ -79,15 +116,24 @@
             const input = document.getElementById('input').value;
             const lines = input.split('\n');
             const stack = [];
-            let lineNo = 1;
-            let charNo = 1;
             
-            const pairs = {
-                '(': ')',
-                '[': ']',
-                '{': '}',
-                '<': '>'
-            };
+            // 获取选中的括号类型
+            const checkParentheses = document.getElementById('checkParentheses').checked;
+            const checkSquare = document.getElementById('checkSquare').checked;
+            const checkCurly = document.getElementById('checkCurly').checked;
+            const checkAngle = document.getElementById('checkAngle').checked;
+            
+            // 根据选择构建括号对
+            const pairs = {};
+            if (checkParentheses) pairs['('] = ')';
+            if (checkSquare) pairs['['] = ']';
+            if (checkCurly) pairs['{'] = '}';
+            if (checkAngle) pairs['<'] = '>';
+            
+            // 构建需要检查的括号字符串
+            const openBrackets = Object.keys(pairs).join('');
+            const closeBrackets = Object.values(pairs).join('');
+            const allBrackets = openBrackets + closeBrackets;
             
             // 用于记录每个括号的位置
             const positions = [];
@@ -98,7 +144,7 @@
                 const line = lines[i];
                 for (let j = 0; j < line.length; j++) {
                     const char = line[j];
-                    if ('([{<>)}]'.includes(char)) {
+                    if (allBrackets.includes(char)) {
                         positions.push({
                             char: char,
                             line: i + 1,
@@ -115,7 +161,7 @@
             for (let pos of positions) {
                 const char = pos.char;
                 
-                if ('([{<'.includes(char)) {
+                if (openBrackets.includes(char)) {
                     stack.push(pos);
                 } else {
                     if (stack.length === 0) {
