@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2</title>
+  <style>
+    body {
+      font-family: "Clear Sans", "Helvetica Neue", Arial, sans-serif;
+      background-color: #faf8ef;
+      color: #776e65;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      touch-action: manipulation;
+    }
+    
+    .container {
+      width: 400px;
+      margin: 0 auto;
+      max-width: 95vw;
+    }
+    
+    .heading {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    h1 {
+      font-size: 60px;
+      font-weight: bold;
+      margin: 0;
+    }
+    
+    .subtitle {
+      font-size: 18px;
+      margin-top: 5px;
+    }
+    
+    .game-container {
+      position: relative;
+      background-color: #bbada0;
+      border-radius: 6px;
+      padding: 15px;
+      margin-bottom: 20px;
+      max-width: 90%;
+      width: 250px;
+      margin: 0 auto 20px;
+    }
+    
+    .grid {
+      display: flex;
+      background-color: #bbada0;
+      border-radius: 6px;
+      width: 250px;
+      height: 120px;
+      justify-content: space-between;
+    }
+    
+    .cell {
+      width: 120px;
+      height: 120px;
+      border-radius: 3px;
+      background-color: rgba(238, 228, 218, 0.35);
+      position: relative;
+    }
+    
+    .tile {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 120px;
+      height: 120px;
+      border-radius: 3px;
+      background-color: #eee4da;
+      text-align: center;
+      line-height: 120px;
+      font-weight: bold;
+      font-size: 55px;
+      transition: all 0.1s ease-in-out;
+      z-index: 10;
+    }
+    
+    .tile-1 {
+      background-color: #eee4da;
+      color: #776e65;
+    }
+    
+    .tile-2 {
+      background-color: #eee1c9;
+      color: #776e65;
+    }
+    
+    .game-message {
+      display: none;
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      background: rgba(238, 228, 218, 0.73);
+      z-index: 100;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      border-radius: 6px;
+    }
+    
+    .game-message.game-won {
+      background: rgba(237, 194, 46, 0.5);
+      color: #f9f6f2;
+    }
+    
+    .game-message p {
+      font-size: 30px;
+      font-weight: bold;
+      margin: 0;
+    }
+    
+    .game-message .lower {
+      margin-top: 20px;
+    }
+    
+    .retry-button {
+      background: #8f7a66;
+      border-radius: 3px;
+      padding: 0 20px;
+      text-decoration: none;
+      color: #f9f6f2;
+      height: 40px;
+      line-height: 40px;
+      display: inline-block;
+      text-align: center;
+      font-weight: bold;
+      cursor: pointer;
+      border: none;
+      font-size: 18px;
+    }
+    
+    .game-explanation {
+      margin-top: 20px;
+      text-align: center;
+    }
+    
+    .keys {
+      display: flex;
+      justify-content: center;
+      margin-top: 10px;
+    }
+    
+    .key {
+      width: 40px;
+      height: 40px;
+      background: #8f7a66;
+      color: #f9f6f2;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 5px;
+      cursor: pointer;
+      font-weight: bold;
+      user-select: none;
+    }
+    
+    .swipe-instruction {
+      display: none;
+      margin-top: 10px;
+      font-style: italic;
+    }
+    
+    @media (max-width: 768px) {
+      .container {
+        width: 95%;
+      }
+      
+      .game-container {
+        margin-right: auto;
+        margin-left: auto;
+      }
+      
+      .swipe-instruction {
+        display: block;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      h1 {
+        font-size: 48px;
+      }
+      
+      .grid {
+        width: 220px;
+      }
+      
+      .cell {
+        width: 105px;
+        height: 105px;
+      }
+      
+      .tile {
+        width: 105px;
+        height: 105px;
+        line-height: 105px;
+        font-size: 48px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="heading">
+      <h1>2</h1>
+    </div>
+    
+    <div class="game-container">
+      <div class="grid">
+        <div class="cell" id="cell-0"></div>
+        <div class="cell" id="cell-1"></div>
+      </div>
+      
+      <div class="game-message">
+        <p></p>
+        <div class="lower">
+          <button class="retry-button">再试一次</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="game-explanation">
+      <p>看你能不能应对这个极其困难的2048变体！</p>
+      <p>使用 <strong>方向键</strong> 移动方块，合成 <strong>2</strong> 即可获胜!</p>
+      <p class="swipe-instruction">在移动设备上可以 <strong>滑动屏幕</strong> 操作</p>
+      <div class="keys">
+        <div class="key up-key">↑</div>
+      </div>
+      <div class="keys">
+        <div class="key left-key">←</div>
+        <div class="key down-key">↓</div>
+        <div class="key right-key">→</div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const grid = [1, 1]; // 初始状态：两个1
+      const gameContainer = document.querySelector('.game-container');
+      const gameMessage = document.querySelector('.game-message');
+      const retryButton = document.querySelector('.retry-button');
+      const leftKey = document.querySelector('.left-key');
+      const rightKey = document.querySelector('.right-key');
+      const upKey = document.querySelector('.up-key');
+      const downKey = document.querySelector('.down-key');
+      
+      // 触摸事件相关变量
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let touchEndX = 0;
+      let touchEndY = 0;
+      
+      function renderGrid() {
+        // 清除现有的方块
+        document.querySelectorAll('.tile').forEach(tile => tile.remove());
+        
+        // 渲染新的方块
+        for (let i = 0; i < grid.length; i++) {
+          if (grid[i] > 0) {
+            const cell = document.getElementById(`cell-${i}`);
+            const tile = document.createElement('div');
+            tile.className = `tile tile-${grid[i]}`;
+            tile.textContent = grid[i];
+            cell.appendChild(tile);
+          }
+        }
+      }
+      
+      function moveLeft() {
+        if (grid[0] === 0 && grid[1] > 0) {
+          grid[0] = grid[1];
+          grid[1] = 0;
+          renderGrid();
+          return true;
+        } else if (grid[0] > 0 && grid[1] > 0 && grid[0] === grid[1]) {
+          grid[0] = grid[0] + grid[1];
+          grid[1] = 0;
+          renderGrid();
+          checkWin();
+          return true;
+        }
+        return false;
+      }
+      
+      function moveRight() {
+        if (grid[1] === 0 && grid[0] > 0) {
+          grid[1] = grid[0];
+          grid[0] = 0;
+          renderGrid();
+          return true;
+        } else if (grid[0] > 0 && grid[1] > 0 && grid[0] === grid[1]) {
+          grid[1] = grid[0] + grid[1];
+          grid[0] = 0;
+          renderGrid();
+          checkWin();
+          return true;
+        }
+        return false;
+      }
+      
+      function checkWin() {
+        if (grid[0] === 2 || grid[1] === 2) {
+          gameMessage.querySelector('p').textContent = '你赢了!';
+          gameMessage.classList.add('game-won');
+          gameMessage.style.display = 'flex';
+        }
+      }
+      
+      function resetGame() {
+        grid[0] = 1;
+        grid[1] = 1;
+        gameMessage.style.display = 'none';
+        gameMessage.classList.remove('game-won');
+        renderGrid();
+      }
+      
+      // 键盘事件监听
+      document.addEventListener('keydown', (event) => {
+        if (gameMessage.style.display === 'flex') return;
+        
+        let moved = false;
+        
+        if (event.key === 'ArrowLeft') {
+          moved = moveLeft();
+        } else if (event.key === 'ArrowRight') {
+          moved = moveRight();
+        }
+        // 上下键不做任何操作，但保留监听以增加迷惑性
+      });
+      
+      // 触摸事件处理
+      gameContainer.addEventListener('touchstart', (e) => {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+      }, false);
+      
+      gameContainer.addEventListener('touchend', (e) => {
+        if (gameMessage.style.display === 'flex') return;
+        
+        touchEndX = e.changedTouches[0].clientX;
+        touchEndY = e.changedTouches[0].clientY;
+        handleSwipe();
+      }, false);
+      
+      // 处理滑动方向
+      function handleSwipe() {
+        const xDiff = touchEndX - touchStartX;
+        const yDiff = touchEndY - touchStartY;
+        
+        // 确定主要滑动方向是水平还是垂直
+        if (Math.abs(xDiff) > Math.abs(yDiff)) {
+          if (xDiff > 0) {
+            // 向右滑动
+            moveRight();
+          } else {
+            // 向左滑动
+            moveLeft();
+          }
+        }
+        // 忽略垂直滑动，与游戏逻辑保持一致
+      }
+      
+      // 点击按钮事件
+      leftKey.addEventListener('click', () => {
+        if (gameMessage.style.display !== 'flex') {
+          moveLeft();
+        }
+      });
+      
+      rightKey.addEventListener('click', () => {
+        if (gameMessage.style.display !== 'flex') {
+          moveRight();
+        }
+      });
+      
+      // 上下按钮也添加点击事件，但不执行实际操作，增加迷惑性
+      if (upKey) {
+        upKey.addEventListener('click', () => {
+          // 不执行任何操作
+        });
+      }
+      
+      if (downKey) {
+        downKey.addEventListener('click', () => {
+          // 不执行任何操作
+        });
+      }
+      
+      // 重试按钮
+      retryButton.addEventListener('click', resetGame);
+      
+      // 阻止移动端浏览器的默认滚动行为
+      document.addEventListener('touchmove', (e) => {
+        if (e.target.closest('.game-container')) {
+          e.preventDefault();
+        }
+      }, { passive: false });
+      
+      // 初始渲染
+      resetGame();
+    });
+  </script>
+</body>
+</html>

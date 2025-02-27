@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>斐波那契块游戏</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background-color: #faf8ef;
+        color: #776e65;
+      }
+
+      .header {
+        width: 100%;
+        max-width: 500px;
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 20px;
+      }
+
+      .title {
+        font-size: 36px;
+        font-weight: bold;
+      }
+
+      .score-container {
+        position: relative;
+        display: inline-block;
+        background: #bbada0;
+        padding: 15px 25px;
+        font-size: 25px;
+        height: 40px;
+        line-height: 25px;
+        font-weight: bold;
+        border-radius: 3px;
+        color: white;
+        text-align: center;
+      }
+
+      .score-title {
+        font-size: 13px;
+        color: #eee4da;
+      }
+
+      .game-container {
+        width: 400px;
+        height: 400px;
+        padding: 15px;
+        background-color: #bbada0;
+        border-radius: 6px;
+        position: relative;
+      }
+
+      .grid-container {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        grid-template-rows: repeat(4, 1fr);
+        gap: 15px;
+        width: 100%;
+        height: 100%;
+      }
+
+      .grid-cell {
+        background-color: #cdc1b4;
+        border-radius: 3px;
+        position: relative;
+      }
+
+      .tile {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 35px;
+        font-weight: bold;
+        border-radius: 3px;
+        transition: transform 0.15s ease, opacity 0.15s ease;
+      }
+
+      .tile-new {
+        animation: appear 0.2s ease;
+      }
+
+      @keyframes appear {
+        0% {
+          opacity: 0;
+          transform: scale(0);
+        }
+
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      .tile-1 {
+        background-color: #eee4da;
+      }
+
+      .tile-2 {
+        background-color: #ede0c8;
+      }
+
+      .tile-3 {
+        background-color: #f2b179;
+        color: white;
+      }
+
+      .tile-5 {
+        background-color: #f59563;
+        color: white;
+      }
+
+      .tile-8 {
+        background-color: #f67c5f;
+        color: white;
+      }
+
+      .tile-13 {
+        background-color: #f65e3b;
+        color: white;
+      }
+
+      .tile-21 {
+        background-color: #edcf72;
+        color: white;
+      }
+
+      .tile-34 {
+        background-color: #edcc61;
+        color: white;
+      }
+
+      .tile-55 {
+        background-color: #edc850;
+        color: white;
+      }
+
+      .tile-89 {
+        background-color: #edc53f;
+        color: white;
+      }
+
+      .tile-144 {
+        background-color: #edc22e;
+        color: white;
+        font-size: 30px;
+      }
+
+      .tile-233 {
+        background-color: #3c3a32;
+        color: white;
+        font-size: 30px;
+      }
+
+      .tile-377 {
+        background-color: #3c3a32;
+        color: white;
+        font-size: 30px;
+      }
+
+      .tile-610 {
+        background-color: #3c3a32;
+        color: white;
+        font-size: 25px;
+      }
+
+      .tile-987 {
+        background-color: #3c3a32;
+        color: white;
+        font-size: 25px;
+      }
+
+      .tile-1597 {
+        background-color: #3c3a32;
+        color: white;
+        font-size: 20px;
+      }
+
+      .tile-2584 {
+        background-color: #3c3a32;
+        color: white;
+        font-size: 20px;
+      }
+
+      .tile-4181 {
+        background-color: #3c3a32;
+        color: white;
+        font-size: 20px;
+      }
+
+      .tile-6765 {
+        background-color: #3c3a32;
+        color: white;
+        font-size: 18px;
+      }
+
+      .tile-10946 {
+        background-color: #3c3a32;
+        color: white;
+        font-size: 16px;
+      }
+
+      .tile-17711 {
+        background-color: #3c3a32;
+        color: white;
+        font-size: 16px;
+      }
+
+      .tile-28657 {
+        background-color: #3c3a32;
+        color: white;
+        font-size: 14px;
+      }
+
+      .tile-46368 {
+        background-color: #3c3a32;
+        color: white;
+        font-size: 14px;
+      }
+
+      .tile-75025 {
+        background-color: #3c3a32;
+        color: white;
+        font-size: 12px;
+      }
+
+      .tile-121393 {
+        background-color: #3c3a32;
+        color: white;
+        font-size: 12px;
+      }
+
+      .tile-196418 {
+        background-color: #3c3a32;
+        color: white;
+        font-size: 10px;
+      }
+
+      .tile-317811 {
+        background-color: #3c3a32;
+        color: white;
+        font-size: 10px;
+      }
+
+      .tile-514229 {
+        background-color: #3c3a32;
+        color: white;
+        font-size: 9px;
+      }
+
+      .tile-832040 {
+        background-color: #3c3a32;
+        color: white;
+        font-size: 9px;
+      }
+
+      .tile-1346269 {
+        background-color: #3c3a32;
+        color: white;
+        font-size: 8px;
+      }
+
+      .game-over {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(238, 228, 218, 0.73);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+        border-radius: 6px;
+        font-size: 60px;
+        font-weight: bold;
+        display: none;
+      }
+
+      .retry-button {
+        margin-top: 20px;
+        padding: 10px 20px;
+        background-color: #8f7a66;
+        color: white;
+        border-radius: 3px;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 18px;
+        border: none;
+      }
+
+      .instructions {
+        max-width: 500px;
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #eee4da;
+        border-radius: 6px;
+      }
+
+      .instructions h3 {
+        margin-top: 0;
+      }
+
+      .instructions ul {
+        padding-left: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="title">斐波那契块</div>
+      <div class="score-container">
+        <div class="score-title">分数</div>
+        <span id="score">0</span>
+      </div>
+    </div>
+    <div class="game-container">
+      <div class="grid-container" id="grid">
+        <!-- Grid cells will be generated by JS -->
+      </div>
+      <div class="game-over" id="game-over">
+        <div>游戏结束!</div>
+        <button class="retry-button" id="retry-button">重新开始</button>
+      </div>
+    </div>
+    <div class="instructions">
+      <h3>游戏规则:</h3>
+      <ul>
+        <li>使用方向键移动方块</li>
+        <li>场上只会随机生成数字1</li>
+        <li>1+1=2</li>
+        <li>之后的每个数字只能和它的斐波那契数列前一位合成</li>
+        <li>例如: 1+2=3, 2+3=5, 3+5=8...</li>
+        <li>两个相同数字不能合成</li>
+      </ul>
+    </div>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        // 游戏状态
+        const state = {
+          grid: Array(4).fill().map(() => Array(4).fill(0)),
+          score: 0,
+          gameOver: false
+        };
+        // 斐波那契数列映射 (键是当前数字，值是可以与之合并的数字)
+        const fibPairs = {
+          1: [1], // 1+1=2
+          2: [1], // 1+2=3
+          3: [2], // 2+3=5
+          5: [3], // 3+5=8
+          8: [5], // 5+8=13
+          13: [8], // 8+13=21
+          21: [13], // 13+21=34
+          34: [21], // 21+34=55
+          55: [34], // 34+55=89
+          89: [55], // 55+89=144
+          144: [89], // 89+144=233
+          233: [144], // 144+233=377
+          377: [233], // 233+377=610
+          610: [377], // 377+610=987
+          987: [610], // 610+987=1597
+          1597: [987], // 987+1597=2584
+          2584: [1597], // 1597+2584=4181
+          4181: [2584], // 2584+4181=6765
+          6765: [4181], // 4181+6765=10946
+          10946: [6765], // 6765+10946=17711
+          17711: [10946], // 10946+17711=28657
+          28657: [17711], // 17711+28657=46368
+          46368: [28657], // 28657+46368=75025
+          75025: [46368], // 46368+75025=121393
+          121393: [75025], // 75025+121393=196418
+          196418: [121393], // 121393+196418=317811
+          317811: [196418], // 196418+317811=514229
+          514229: [317811], // 317811+514229=832040
+          832040: [514229] // 514229+832040=1346269
+        };
+        // 斐波那契数列结果映射
+        const fibResults = {
+          '1,1': 2,
+          '1,2': 3,
+          '2,3': 5,
+          '3,5': 8,
+          '5,8': 13,
+          '8,13': 21,
+          '13,21': 34,
+          '21,34': 55,
+          '34,55': 89,
+          '55,89': 144,
+          '89,144': 233,
+          '144,233': 377,
+          '233,377': 610,
+          '377,610': 987,
+          '610,987': 1597,
+          '987,1597': 2584,
+          '1597,2584': 4181,
+          '2584,4181': 6765,
+          '4181,6765': 10946,
+          '6765,10946': 17711,
+          '10946,17711': 28657,
+          '17711,28657': 46368,
+          '28657,46368': 75025,
+          '46368,75025': 121393,
+          '75025,121393': 196418,
+          '121393,196418': 317811,
+          '196418,317811': 514229,
+          '317811,514229': 832040,
+          '514229,832040': 1346269
+        };
+        // 初始化游戏网格
+        const gridElement = document.getElementById('grid');
+        for (let i = 0; i < 16; i++) {
+          const cell = document.createElement('div');
+          cell.className = 'grid-cell';
+          cell.id = `cell-${Math.floor(i / 4)}-${i % 4}`;
+          gridElement.appendChild(cell);
+        }
+        // 添加新的数字到网格
+        function addRandomTile() {
+          const emptyCells = [];
+          for (let i = 0; i < 4; i++) {
+            for (let j = 0; j < 4; j++) {
+              if (state.grid[i][j] === 0) {
+                emptyCells.push({
+                  row: i,
+                  col: j
+                });
+              }
+            }
+          }
+          if (emptyCells.length > 0) {
+            const {
+              row,
+              col
+            } = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+            state.grid[row][col] = 1; // 只生成数字1
+            renderTile(row, col, 1, true);
+          }
+        }
+        // 渲染单个方块
+        function renderTile(row, col, value, isNew = false) {
+          const cell = document.getElementById(`cell-${row}-${col}`);
+          // 移除旧的方块
+          const oldTile = cell.querySelector('.tile');
+          if (oldTile) {
+            cell.removeChild(oldTile);
+          }
+          if (value !== 0) {
+            const tile = document.createElement('div');
+            tile.className = `tile tile-${value}${isNew ? ' tile-new' : ''}`;
+            tile.textContent = value;
+            cell.appendChild(tile);
+          }
+        }
+        // 渲染整个网格
+        function renderGrid() {
+          for (let i = 0; i < 4; i++) {
+            for (let j = 0; j < 4; j++) {
+              renderTile(i, j, state.grid[i][j]);
+            }
+          }
+        }
+        // 更新分数
+        function updateScore() {
+          document.getElementById('score').textContent = state.score;
+        }
+        // 检查游戏是否结束
+        function checkGameOver() {
+          // 检查是否有空格子
+          for (let i = 0; i < 4; i++) {
+            for (let j = 0; j < 4; j++) {
+              if (state.grid[i][j] === 0) {
+                return false;
+              }
+            }
+          }
+          // 检查是否有可以合并的方块
+          for (let i = 0; i < 4; i++) {
+            for (let j = 0; j < 4; j++) {
+              const value = state.grid[i][j];
+              const canMergeWith = fibPairs[value] || [];
+              // 检查右边
+              if (j < 3 && canMergeWith.includes(state.grid[i][j + 1])) {
+                return false;
+              }
+              // 检查下边
+              if (i < 3 && canMergeWith.includes(state.grid[i + 1][j])) {
+                return false;
+              }
+            }
+          }
+          return true;
+        }
+        // 显示游戏结束
+        function showGameOver() {
+          document.getElementById('game-over').style.display = 'flex';
+        }
+        // 移动方块
+        function moveTiles(direction) {
+          if (state.gameOver) return false;
+          let moved = false;
+          const newGrid = Array(4).fill().map(() => Array(4).fill(0));
+          // 向左移动
+          function moveLeft() {
+            for (let i = 0; i < 4; i++) {
+              let col = 0;
+              for (let j = 0; j < 4; j++) {
+                if (state.grid[i][j] !== 0) {
+                  if (col > 0 && newGrid[i][col - 1] !== 0 && fibPairs[newGrid[i][col - 1]] && fibPairs[newGrid[i][col - 1]].includes(state.grid[i][j])) {
+                    // 合并
+                    const result = fibResults[`${newGrid[i][col - 1]},${state.grid[i][j]}`] || fibResults[`${state.grid[i][j]},${newGrid[i][col - 1]}`];
+                    newGrid[i][col - 1] = result;
+                    state.score += result;
+                    moved = true;
+                  } else if (col > 0 && newGrid[i][col - 1] !== 0 && fibPairs[state.grid[i][j]] && fibPairs[state.grid[i][j]].includes(newGrid[i][col - 1])) {
+                    // 反向合并
+                    const result = fibResults[`${state.grid[i][j]},${newGrid[i][col - 1]}`] || fibResults[`${newGrid[i][col - 1]},${state.grid[i][j]}`];
+                    newGrid[i][col - 1] = result;
+                    state.score += result;
+                    moved = true;
+                  } else {
+                    newGrid[i][col] = state.grid[i][j];
+                    if (j !== col) {
+                      moved = true;
+                    }
+                    col++;
+                  }
+                }
+              }
+            }
+          }
+          // 向右移动
+          function moveRight() {
+            for (let i = 0; i < 4; i++) {
+              let col = 3;
+              for (let j = 3; j >= 0; j--) {
+                if (state.grid[i][j] !== 0) {
+                  if (col < 3 && newGrid[i][col + 1] !== 0 && fibPairs[newGrid[i][col + 1]] && fibPairs[newGrid[i][col + 1]].includes(state.grid[i][j])) {
+                    // 合并
+                    const result = fibResults[`${newGrid[i][col + 1]},${state.grid[i][j]}`] || fibResults[`${state.grid[i][j]},${newGrid[i][col + 1]}`];
+                    newGrid[i][col + 1] = result;
+                    state.score += result;
+                    moved = true;
+                  } else if (col < 3 && newGrid[i][col + 1] !== 0 && fibPairs[state.grid[i][j]] && fibPairs[state.grid[i][j]].includes(newGrid[i][col + 1])) {
+                    // 反向合并
+                    const result = fibResults[`${state.grid[i][j]},${newGrid[i][col + 1]}`] || fibResults[`${newGrid[i][col + 1]},${state.grid[i][j]}`];
+                    newGrid[i][col + 1] = result;
+                    state.score += result;
+                    moved = true;
+                  } else {
+                    newGrid[i][col] = state.grid[i][j];
+                    if (j !== col) {
+                      moved = true;
+                    }
+                    col--;
+                  }
+                }
+              }
+            }
+          }
+          // 向上移动
+          function moveUp() {
+            for (let j = 0; j < 4; j++) {
+              let row = 0;
+              for (let i = 0; i < 4; i++) {
+                if (state.grid[i][j] !== 0) {
+                  if (row > 0 && newGrid[row - 1][j] !== 0 && fibPairs[newGrid[row - 1][j]] && fibPairs[newGrid[row - 1][j]].includes(state.grid[i][j])) {
+                    // 合并
+                    const result = fibResults[`${newGrid[row - 1][j]},${state.grid[i][j]}`] || fibResults[`${state.grid[i][j]},${newGrid[row - 1][j]}`];
+                    newGrid[row - 1][j] = result;
+                    state.score += result;
+                    moved = true;
+                  } else if (row > 0 && newGrid[row - 1][j] !== 0 && fibPairs[state.grid[i][j]] && fibPairs[state.grid[i][j]].includes(newGrid[row - 1][j])) {
+                    // 反向合并
+                    const result = fibResults[`${state.grid[i][j]},${newGrid[row - 1][j]}`] || fibResults[`${newGrid[row - 1][j]},${state.grid[i][j]}`];
+                    newGrid[row - 1][j] = result;
+                    state.score += result;
+                    moved = true;
+                  } else {
+                    newGrid[row][j] = state.grid[i][j];
+                    if (i !== row) {
+                      moved = true;
+                    }
+                    row++;
+                  }
+                }
+              }
+            }
+          }
+          // 向下移动
+          function moveDown() {
+            for (let j = 0; j < 4; j++) {
+              let row = 3;
+              for (let i = 3; i >= 0; i--) {
+                if (state.grid[i][j] !== 0) {
+                  if (row < 3 && newGrid[row + 1][j] !== 0 && fibPairs[newGrid[row + 1][j]] && fibPairs[newGrid[row + 1][j]].includes(state.grid[i][j])) {
+                    // 合并
+                    const result = fibResults[`${newGrid[row + 1][j]},${state.grid[i][j]}`] || fibResults[`${state.grid[i][j]},${newGrid[row + 1][j]}`];
+                    newGrid[row + 1][j] = result;
+                    state.score += result;
+                    moved = true;
+                  } else if (row < 3 && newGrid[row + 1][j] !== 0 && fibPairs[state.grid[i][j]] && fibPairs[state.grid[i][j]].includes(newGrid[row + 1][j])) {
+                    // 反向合并
+                    const result = fibResults[`${state.grid[i][j]},${newGrid[row + 1][j]}`] || fibResults[`${newGrid[row + 1][j]},${state.grid[i][j]}`];
+                    newGrid[row + 1][j] = result;
+                    state.score += result;
+                    moved = true;
+                  } else {
+                    newGrid[row][j] = state.grid[i][j];
+                    if (i !== row) {
+                      moved = true;
+                    }
+                    row--;
+                  }
+                }
+              }
+            }
+          }
+          // 根据方向执行移动
+          switch (direction) {
+            case 'left':
+              moveLeft();
+              break;
+            case 'right':
+              moveRight();
+              break;
+            case 'up':
+              moveUp();
+              break;
+            case 'down':
+              moveDown();
+              break;
+          }
+          if (moved) {
+            state.grid = newGrid;
+            addRandomTile();
+            renderGrid();
+            updateScore();
+            if (checkGameOver()) {
+              state.gameOver = true;
+              showGameOver();
+            }
+          }
+          return moved;
+        }
+        // 键盘事件处理
+        document.addEventListener('keydown', (event) => {
+          let moved = false;
+          switch (event.key) {
+            case 'ArrowLeft':
+              moved = moveTiles('left');
+              break;
+            case 'ArrowRight':
+              moved = moveTiles('right');
+              break;
+            case 'ArrowUp':
+              moved = moveTiles('up');
+              break;
+            case 'ArrowDown':
+              moved = moveTiles('down');
+              break;
+          }
+          if (moved) {
+            event.preventDefault();
+          }
+        });
+        // 重新开始游戏
+        function restartGame() {
+          state.grid = Array(4).fill().map(() => Array(4).fill(0));
+          state.score = 0;
+          state.gameOver = false;
+          document.getElementById('game-over').style.display = 'none';
+          renderGrid();
+          updateScore();
+          // 添加初始方块
+          addRandomTile();
+          addRandomTile();
+        }
+        // 重新开始按钮事件
+        document.getElementById('retry-button').addEventListener('click', restartGame);
+        // 初始化游戏
+        restartGame();
+      });
+    </script>
+  </body>
+</html>
