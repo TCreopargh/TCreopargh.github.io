@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>太阳系实时模拟</title>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/postprocessing/EffectComposer.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/postprocessing/RenderPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/postprocessing/UnrealBloomPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/postprocessing/ShaderPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/shaders/CopyShader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/shaders/LuminosityHighPassShader.js"></script>
+  <style>
+    body { 
+      margin: 0; 
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    canvas { 
+      display: block; 
+    }
+    #info {
+      position: absolute;
+      top: 10px;
+      width: 100%;
+      text-align: center;
+      color: white;
+      font-size: 14px;
+      z-index: 100;
+      pointer-events: none;
+    }
+    #controls {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.5);
+      padding: 10px;
+      border-radius: 10px;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      color: white;
+    }
+    .control-group {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    button {
+      background: #444;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #666;
+    }
+    input[type="range"] {
+      width: 150px;
+    }
+    .legend {
+      position: absolute;
+      top: 40px;
+      right: 20px;
+      background: rgba(0,0,0,0.5);
+      padding: 10px;
+      border-radius: 10px;
+      color: white;
+      z-index: 100;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+    .legend-color {
+      width: 20px;
+      height: 10px;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="info">
+    太阳系实时模拟 | 使用鼠标拖动旋转视角，滚轮缩放
+  </div>
+  <div class="legend">
+    <h3 style="margin-top: 0;">图例</h3>
+    <div class="legend-item">
+      <div class="legend-color" style="background-color: #6495ED;"></div>
+      <span>类地行星轨道</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background-color: #FF7F50;"></div>
+      <span>巨行星轨道</span>
+    </div>
+  </div>
+  <div id="controls">
+    <div class="control-group">
+      <label for="timeSpeed">时间速度:</label>
+      <input type="range" id="timeSpeed" min="0" max="100" value="10">
+      <span id="timeSpeedValue">10x</span>
+    </div>
+    <div class="control-group">
+      <label for="scaleSize">行星大小:</label>
+      <input type="range" id="scaleSize" min="1" max="50" value="10">
+      <span id="scaleSizeValue">10x</span>
+    </div>
+    <div class="control-group">
+      <label for="scaleDistance">轨道大小:</label>
+      <input type="range" id="scaleDistance" min="1" max="20" value="4">
+      <span id="scaleDistanceValue">4x</span>
+    </div>
+    <div class="control-group">
+      <button id="toggleOrbits">显示/隐藏轨道</button>
+      <button id="toggleLabels">显示/隐藏标签</button>
+      <button id="resetView">重置视角</button>
+    </div>
+  </div>
+  
+  <script>
+    // 创建场景
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
+    
+    // 创建相机
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+    camera.position.set(0, 100, 200);
+    
+    // 创建渲染器
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+    
+    // 设置后期处理
+    const renderScene = new THREE.RenderPass(scene, camera);
+    const bloomPass = new THREE.UnrealBloomPass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      1.5,   // 强度
+      0.4,   // 半径
+      0.85   // 阈值
+    );
+    
+    const composer = new THREE.EffectComposer(renderer);
+    composer.addPass(renderScene);
+    composer.addPass(bloomPass);
+    
+    // 添加控制器
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    
+    // 添加光源
+    const ambientLight = new THREE.AmbientLight(0x333333);
+    scene.add(ambientLight);
+    
+    // 行星数据
+    const planets = [
+      { name: "太阳", radius: 6.96, distance: 0, color: 0xffff00, rotationPeriod: 27, orbitPeriod: 0, tilt: 7.25, type: "star", glowColor: 0xffff99, glowIntensity: 1.0 },
+      { name: "水星", radius: 0.24, distance: 5.8, color: 0x8a8a8a, rotationPeriod: 58.6, orbitPeriod: 0.24, tilt: 0.03, type: "terrestrial", glowColor: 0xaaaaaa, glowIntensity: 0.3 },
+      { name: "金星", radius: 0.6, distance: 10.8, color: 0xe39e1c, rotationPeriod: -243, orbitPeriod: 0.62, tilt: 177.3, type: "terrestrial", glowColor: 0xf0c080, glowIntensity: 0.3 },
+      { name: "地球", radius: 0.63, distance: 15, color: 0x3333ff, rotationPeriod: 1, orbitPeriod: 1, tilt: 23.45, type: "terrestrial", glowColor: 0x6666ff, glowIntensity: 0.3 },
+      { name: "火星", radius: 0.33, distance: 22.8, color: 0xff3300, rotationPeriod: 1.03, orbitPeriod: 1.88, tilt: 25.19, type: "terrestrial", glowColor: 0xff6633, glowIntensity: 0.3 },
+      { name: "木星", radius: 7.0, distance: 77.9, color: 0xd8ca9d, rotationPeriod: 0.41, orbitPeriod: 11.86, tilt: 3.13, type: "gas_giant", glowColor: 0xe0d5b0, glowIntensity: 0.4 },
+      { name: "土星", radius: 5.8, distance: 143.4, color: 0xf0e4b8, rotationPeriod: 0.45, orbitPeriod: 29.46, tilt: 26.73, type: "gas_giant", glowColor: 0xf5ecc0, glowIntensity: 0.4 },
+      { name: "天王星", radius: 2.5, distance: 287.1, color: 0xb8f0e4, rotationPeriod: -0.72, orbitPeriod: 84.01, tilt: 97.77, type: "ice_giant", glowColor: 0xc0f5ec, glowIntensity: 0.4 },
+      { name: "海王星", radius: 2.4, distance: 449.5, color: 0x3333cc, rotationPeriod: 0.67, orbitPeriod: 164.8, tilt: 28.32, type: "ice_giant", glowColor: 0x6666dd, glowIntensity: 0.4 }
+    ];
+    
+    // 控制参数
+    let timeSpeed = 10;
+    let planetScale = 10;
+    let distanceScale = 4;
+    let showOrbits = true;
+    let showLabels = true;
+    
+    // 创建星体和轨道
+    const planetMeshes = [];
+    const orbitLines = [];
+    const planetLabels = [];
+    
+    // 创建HTML标签
+    function createLabel(name) {
+      const div = document.createElement('div');
+      div.className = 'planet-label';
+      div.textContent = name;
+      div.style.position = 'absolute';
+      div.style.color = 'white';
+      div.style.padding = '2px 6px';
+      div.style.backgroundColor = 'rgba(0,0,0,0.5)';
+      div.style.borderRadius = '4px';
+      div.style.fontSize = '12px';
+      div.style.pointerEvents = 'none';
+      div.style.zIndex = '10';
+      div.style.display = showLabels ? 'block' : 'none';
+      document.body.appendChild(div);
+      return div;
+    }
+    
+    function createSolarSystem() {
+      // 清除现有对象
+      planetMeshes.forEach(mesh => scene.remove(mesh));
+      orbitLines.forEach(line => scene.remove(line));
+      planetLabels.forEach(label => {
+        if (label && label.parentNode) {
+          label.parentNode.removeChild(label);
+        }
+      });
+      planetMeshes.length = 0;
+      orbitLines.length = 0;
+      planetLabels.length = 0;
+      
+      // 创建太阳光源
+      const sunLight = new THREE.PointLight(0xffffff, 1.5, 1000);
+      scene.add(sunLight);
+      
+      // 创建行星和轨道
+      planets.forEach(planet => {
+        // 行星
+        const geometry = new THREE.SphereGeometry(planet.radius * planetScale / 100, 32, 32);
+        let material;
+        
+        if (planet.name === "太阳") {
+          material = new THREE.MeshBasicMaterial({ 
+            color: planet.color,
+            emissive: planet.glowColor,
+            emissiveIntensity: planet.glowIntensity
+          });
+        } else {
+          material = new THREE.MeshLambertMaterial({ 
+            color: planet.color,
+            emissive: planet.glowColor,
+            emissiveIntensity: planet.glowIntensity
+          });
+        }
+        
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.userData = planet;
+        scene.add(mesh);
+        planetMeshes.push(mesh);
+        
+        // 创建标签
+        const label = createLabel(planet.name);
+        planetLabels.push(label);
+        
+        // 轨道
+        if (planet.distance > 0) {
+          const orbitGeometry = new THREE.BufferGeometry();
+          const vertices = [];
+          const segments = 128;
+          
+          for (let i = 0; i <= segments; i++) {
+            const theta = (i / segments) * Math.PI * 2;
+            const dx = Math.cos(theta) * planet.distance * distanceScale;
+            const dz = Math.sin(theta) * planet.distance * distanceScale;
+            vertices.push(dx, 0, dz);
+          }
+          
+          orbitGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+          
+          // 根据行星类型设置轨道颜色和粗细
+          let orbitColor;
+          if (planet.type === "terrestrial") {
+            orbitColor = 0x6495ED; // 类地行星轨道颜色 - 矢车菊蓝
+          } else if (planet.type === "gas_giant" || planet.type === "ice_giant") {
+            orbitColor = 0xFF7F50; // 巨行星轨道颜色 - 珊瑚色
+          } else {
+            orbitColor = 0x444444; // 默认轨道颜色
+          }
+          
+          const orbitMaterial = new THREE.LineBasicMaterial({ 
+            color: orbitColor, 
+            transparent: true, 
+            opacity: 0.7,
+            linewidth: 2 // 注意：WebGL限制，linewidth在大多数浏览器中不起作用
+          });
+         
+        const orbitLine = new THREE.Line(orbitGeometry, orbitMaterial);
+        orbitLine.visible = showOrbits;
+        scene.add(orbitLine);
+        orbitLines.push(orbitLine);
+        
+        // 为土星添加光环
+        if (planet.name === "土星") {
+          const ringGeometry = new THREE.RingGeometry(
+            planet.radius * 1.4 * planetScale / 100, 
+            planet.radius * 2.0 * planetScale / 100, 
+            64
+          );
+          const ringMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xf0e4b8, 
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.7
+          });
+          const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+          ring.rotation.x = Math.PI / 2;
+          mesh.add(ring);
+        }
+      }
+    });
+  }
+  
+  createSolarSystem();
+  
+  // 更新控制值显示
+  document.getElementById('timeSpeedValue').textContent = `${timeSpeed}x`;
+  document.getElementById('scaleSizeValue').textContent = `${planetScale}x`;
+  document.getElementById('scaleDistanceValue').textContent = `${distanceScale}x`;
+  
+  // 事件监听
+  document.getElementById('timeSpeed').addEventListener('input', function(e) {
+    timeSpeed = parseInt(e.target.value);
+    document.getElementById('timeSpeedValue').textContent = `${timeSpeed}x`;
+  });
+  
+  document.getElementById('scaleSize').addEventListener('input', function(e) {
+    planetScale = parseInt(e.target.value);
+    document.getElementById('scaleSizeValue').textContent = `${planetScale}x`;
+    createSolarSystem();
+  });
+  
+  document.getElementById('scaleDistance').addEventListener('input', function(e) {
+    distanceScale = parseInt(e.target.value);
+    document.getElementById('scaleDistanceValue').textContent = `${distanceScale}x`;
+    createSolarSystem();
+  });
+  
+  document.getElementById('toggleOrbits').addEventListener('click', function() {
+    showOrbits = !showOrbits;
+    orbitLines.forEach(line => {
+      line.visible = showOrbits;
+    });
+  });
+  
+  document.getElementById('toggleLabels').addEventListener('click', function() {
+    showLabels = !showLabels;
+    planetLabels.forEach(label => {
+      label.style.display = showLabels ? 'block' : 'none';
+    });
+  });
+  
+  document.getElementById('resetView').addEventListener('click', function() {
+    camera.position.set(0, 100, 200);
+    controls.target.set(0, 0, 0);
+    controls.update();
+  });
+  
+  // 窗口大小调整
+  window.addEventListener('resize', function() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    composer.setSize(window.innerWidth, window.innerHeight);
+  });
+  
+  // 创建星空背景
+  function createStarfield() {
+    const starsGeometry = new THREE.BufferGeometry();
+    const starsMaterial = new THREE.PointsMaterial({
+      color: 0xffffff,
+      size: 1,
+      sizeAttenuation: false
+    });
+    
+    const starsVertices = [];
+    for (let i = 0; i < 5000; i++) {
+      const x = THREE.MathUtils.randFloatSpread(2000);
+      const y = THREE.MathUtils.randFloatSpread(2000);
+      const z = THREE.MathUtils.randFloatSpread(2000);
+      starsVertices.push(x, y, z);
+    }
+    
+    starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starsVertices, 3));
+    const starField = new THREE.Points(starsGeometry, starsMaterial);
+    scene.add(starField);
+  }
+  
+  createStarfield();
+  
+  // 更新标签位置
+  function updateLabels() {
+    if (!showLabels) return;
+    
+    planetMeshes.forEach((mesh, index) => {
+      const label = planetLabels[index];
+      if (label) {
+        const position = mesh.position.clone();
+        position.project(camera);
+        
+        const x = (position.x * 0.5 + 0.5) * window.innerWidth;
+        const y = (- position.y * 0.5 + 0.5) * window.innerHeight;
+        
+        // 只有当行星在相机前方时才显示标签
+        if (position.z < 1) {
+          label.style.display = 'block';
+          label.style.transform = `translate(-50%, -50%)`;
+          label.style.left = `${x}px`;
+          label.style.top = `${y - 20}px`; // 在行星上方显示标签
+        } else {
+          label.style.display = 'none';
+        }
+      }
+    });
+  }
+  
+  // 动画循环
+  const clock = new THREE.Clock();
+  let time = 0;
+  
+  function animate() {
+    requestAnimationFrame(animate);
+    
+    const delta = clock.getDelta();
+    time += delta * (timeSpeed / 10);
+    
+    // 更新行星位置
+    planetMeshes.forEach(mesh => {
+      const planet = mesh.userData;
+      
+      if (planet.distance > 0) {
+        // 轨道运动
+        const orbitSpeed = (1 / planet.orbitPeriod) * Math.PI * 2;
+        const angle = time * orbitSpeed;
+        mesh.position.x = Math.cos(angle) * planet.distance * distanceScale;
+        mesh.position.z = Math.sin(angle) * planet.distance * distanceScale;
+        
+        // 自转
+        if (planet.rotationPeriod !== 0) {
+          const rotationSpeed = (1 / planet.rotationPeriod) * Math.PI * 2;
+          mesh.rotation.y += delta * timeSpeed * rotationSpeed;
+        }
+        
+        // 设置倾角
+        mesh.rotation.x = planet.tilt * Math.PI / 180;
+      }
+    });
+    
+    updateLabels();
+    controls.update();
+    composer.render();
+  }
+  
+  animate();
+</script>
+</body>
+</html>
