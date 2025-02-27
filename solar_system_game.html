@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>太阳系模拟游戏</title>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        background-color: #000;
+        color: #fff;
+        font-family: Arial, sans-serif;
+      }
+
+      canvas {
+        display: block;
+      }
+
+      #ui {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background-color: rgba(0, 0, 0, 0.7);
+        padding: 10px;
+        border-radius: 5px;
+      }
+
+      #timer {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background-color: rgba(0, 0, 0, 0.7);
+        padding: 10px;
+        border-radius: 5px;
+      }
+
+      #gameOver {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: rgba(0, 0, 0, 0.8);
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        display: none;
+      }
+
+      button {
+        background-color: #4CAF50;
+        border: none;
+        color: white;
+        padding: 10px 15px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        margin: 4px 2px;
+        cursor: pointer;
+        border-radius: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="ui">
+      <div>
+        <label for="gravityStrength">引力强度: </label>
+        <input type="range" id="gravityStrength" min="1" max="1000" value="50">
+        <span id="gravityValue">50</span>
+      </div>
+      <div>
+        <label for="spawnSpeed">物质生成速度: </label>
+        <input type="range" id="spawnSpeed" min="1" max="600" value="20">
+        <span id="spawnSpeedValue">20</span>
+      </div>
+      <div id="stats">
+        <p>星体数量: <span id="bodyCount">1</span>
+        </p>
+        <p>最大行星: <span id="largestPlanet">无</span>
+        </p>
+      </div>
+    </div>
+    <div id="timer">
+      <p>游戏时间: <span id="gameTime">00:00</span>
+      </p>
+    </div>
+    <div id="gameOver">
+      <h1>游戏结束</h1>
+      <p>太阳已经超新星爆发，摧毁了整个太阳系！</p>
+      <button id="restartButton">重新开始</button>
+    </div>
+    <script>
+      // 游戏常量
+      const GAME_DURATION = 10 * 60; // 10分钟，以秒为单位
+      const SUN_EXPANSION_TIME = 0.6 * GAME_DURATION; 
+      const RED_GIANT_TIME = 0.9 * GAME_DURATION; 
+      const MATTER_SPAWN_INTERVAL = 12; // 每秒生成物质的间隔（毫秒）
+      // 天体类型阈值（质量）
+      const ASTEROID_THRESHOLD = 25;
+      const DWARF_PLANET_THRESHOLD = 100;
+      const PLANET_THRESHOLD = 400;
+      const MAX_OBJECTS = 3000;
+      const GAS_GIANT_THRESHOLD = 2500;
+      const SPAWN_INTERVAL_CONST = 1200;
+      const TIME_SCALE = 6.0;
+      const G = 10
+      const PLAYER_G_BONUS = 1000
+      const SUN_MASS = 1024
+      const SCALE_FACTOR = 1
+      const RADIUS_FACTOR = 0.26
+      const PURGE_DISTANCE = 2000
+      // 游戏状态
+      let gameTime = 0;
+      let gameRunning = true;
+      let scale = 1.0;
+      let bodies = [];
+      let matter = [];
+      let mouseX = 0;
+      let mouseY = 0;
+      let mouseDown = false;
+      let rightMouseDown = false;
+      let gravityStrength = 50;
+      let bodyIdCounter = 1;
+      let matterSpawnInterval = SPAWN_INTERVAL_CONST / 20; // 每秒生成物质的间隔（毫秒）
+      let lastMatterSpawn = 0;
+      let nextSpawnInterval = matterSpawnInterval;
+
+      const englishPlanetNames = [
+        "Nexus", "Astralis", "Chronos", "Zephyria", "Oblivion", "Elysium", "Novaris",
+        "Celestia", "Proxima", "Vortex", "Helios", "Solstice", "Nebula", "Andromis",
+        "Polaris", "Astrid", "Lumina", "Zenith", "Orion", "Thalassa", "Aether",
+        "Cryonis", "Thermos", "Antares", "Meridian", "Callisto", "Hyperion", "Lyra",
+        "Noctis", "Eternis", "Tempest", "Avalon", "Nimbus", "Quantum", "Vega",
+        "Altair", "Sirius", "Rigel", "Arcturus", "Cassini", "Kepler", "Galileo",
+        "Hubble", "Newton", "Hawking", "Sagan", "Tycho", "Copernicus", "Halley",
+        "Azura", "Cygnus", "Draco", "Eridanus", "Fornax", "Gemini", "Hydra",
+        "Indus", "Lacerta", "Mensa", "Norma", "Octans", "Pavo", "Reticulum",
+        "Sculptor", "Tucana", "Volans", "Phoenix", "Aquila", "Boötes", "Corona",
+        "Delphinus", "Equuleus", "Hercules", "Lupus", "Lynx", "Pegasus", "Perseus",
+        "Sagitta", "Triangulum", "Vulpecula", "Caelum", "Circinus", "Columba", "Crater",
+        "Corvus", "Pyxis", "Sextans", "Telescopium", "Microscopium", "Monoceros", "Musca",
+        "Auriga", "Camelopardalis", "Carina", "Centaurus", "Cepheus", "Cetus", "Chamaeleon",
+        "Dorado", "Grus", "Horologium", "Hydrus", "Lacerta", "Lepus", "Libra", "Pictor"
+      ];
+    
+      // 获取Canvas和上下文
+      const canvas = document.getElementById('gameCanvas');
+      const gl = canvas.getContext('webgl');
+      if (!gl) {
+        alert('无法初始化WebGL，您的浏览器可能不支持。');
+      }
+      // 设置Canvas大小
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        gl.viewport(0, 0, canvas.width, canvas.height);
+      }
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+      // 着色器程序
+      const vsSource = `
+      attribute vec2 aPosition;
+      attribute float aSize;
+      attribute vec3 aColor;
+      
+      uniform float uScale;
+      uniform vec2 uCenter;
+      uniform vec2 uResolution;
+      
+      varying vec3 vColor;
+      
+      void main() {
+        vec2 position = (aPosition - uCenter) * uScale;
+        vec2 zeroToOne = position / uResolution + 0.5;
+        vec2 zeroToTwo = zeroToOne * 2.0;
+        vec2 clipSpace = zeroToTwo - 1.0;
+        gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+        gl_PointSize = aSize * uScale;
+        vColor = aColor;
+      }
+    `;
+      const fsSource = `
+      precision mediump float;
+      varying vec3 vColor;
+      
+      void main() {
+        float dist = distance(gl_PointCoord, vec2(0.5, 0.5));
+        if (dist > 0.5) {
+          discard;
+        }
+        gl_FragColor = vec4(vColor, 1.0);
+      }
+    `;
+      // 创建着色器程序
+      function createShaderProgram(vs, fs) {
+        const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+        gl.shaderSource(vertexShader, vs);
+        gl.compileShader(vertexShader);
+        if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
+          console.error('顶点着色器编译错误:', gl.getShaderInfoLog(vertexShader));
+          return null;
+        }
+        const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+        gl.shaderSource(fragmentShader, fs);
+        gl.compileShader(fragmentShader);
+        if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
+          console.error('片段着色器编译错误:', gl.getShaderInfoLog(fragmentShader));
+          return null;
+        }
+        const program = gl.createProgram();
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+          console.error('着色器程序链接错误:', gl.getProgramInfoLog(program));
+          return null;
+        }
+        return program;
+      }
+      const shaderProgram = createShaderProgram(vsSource, fsSource);
+      // 获取着色器变量位置
+      const programInfo = {
+        attribLocations: {
+          position: gl.getAttribLocation(shaderProgram, 'aPosition'),
+          size: gl.getAttribLocation(shaderProgram, 'aSize'),
+          color: gl.getAttribLocation(shaderProgram, 'aColor')
+        },
+        uniformLocations: {
+          scale: gl.getUniformLocation(shaderProgram, 'uScale'),
+          center: gl.getUniformLocation(shaderProgram, 'uCenter'),
+          resolution: gl.getUniformLocation(shaderProgram, 'uResolution')
+        }
+      };
+      // 天体类
+      class CelestialBody {
+        constructor(x, y, vx, vy, mass, color, name, type) {
+          this.x = x;
+          this.y = y;
+          this.vx = vx;
+          this.vy = vy;
+          this.mass = mass;
+          this.radius = Math.pow(mass, RADIUS_FACTOR) * SCALE_FACTOR;
+          this.color = color;
+          this.name = name;
+          this.type = type;
+        }
+        update(dt) {
+          // 更新位置
+          this.x += this.vx * dt;
+          this.y += this.vy * dt;
+        }
+        applyGravity(body, dt) {
+          const dx = body.x - this.x;
+          const dy = body.y - this.y;
+          const distSq = dx * dx + dy * dy;
+          const dist = Math.sqrt(distSq);
+          if (dist < this.radius + body.radius) {
+            return true; // 发生碰撞
+          }
+
+          if (body.mass < ASTEROID_THRESHOLD) {
+            return false; // 质量太小不计算
+          }
+
+          if (body.type != 'sun' && dist > 3000) {
+            return false;
+          }
+
+          // 引力计算 F = G * m1 * m2 / r^2
+          const force = G * this.mass * body.mass / distSq;
+          // 应用力
+          const angle = Math.atan2(dy, dx);
+          const fx = Math.cos(angle) * force;
+          const fy = Math.sin(angle) * force;
+          // 加速度 a = F / m
+          const ax = fx / this.mass;
+          const ay = fy / this.mass;
+          // 更新速度
+          this.vx += ax * dt;
+          this.vy += ay * dt;
+          return false;
+        }
+        applyPlayerGravity(x, y, strength, isRepulsive, dt) {
+          if (this.type == 'sun') {
+            return
+          }
+          const dx = x - this.x;
+          const dy = y - this.y;
+          const distSq = dx * dx + dy * dy;
+          const dist = Math.sqrt(distSq);
+          if (dist < 50) return; // 太近不应用力
+          if (dist > 3000) return; // 太远不应用力
+          // 引力计算
+          const grav = G * PLAYER_G_BONUS * strength / 50;
+          const force = grav * this.mass / distSq;
+          // 应用力
+          const angle = Math.atan2(dy, dx);
+          const fx = Math.cos(angle) * force * (isRepulsive ? -1 : 1);
+          const fy = Math.sin(angle) * force * (isRepulsive ? -1 : 1);
+          // 加速度
+          const ax = fx / this.mass;
+          const ay = fy / this.mass;
+          // 更新速度
+          this.vx += ax * dt;
+          this.vy += ay * dt;
+        }
+        getType() {
+          if (this.type === 'sun') return '太阳';
+          if (this.mass < ASTEROID_THRESHOLD) {
+            return '星际物质';
+          } else if (this.mass < DWARF_PLANET_THRESHOLD) {
+            return '小行星';
+          } else if (this.mass < PLANET_THRESHOLD) {
+            return '矮行星';
+          } else if (this.mass < GAS_GIANT_THRESHOLD) {
+            return '行星';
+          } else {
+            return '巨行星';
+          }
+        }
+        updateTypeAndName() {
+          const oldType = this.type;
+          const newType = this.getType();
+          let items = englishPlanetNames
+          if (oldType !== newType && newType !== '星际物质') {
+            if (oldType === '星际物质') {
+              bodyIdCounter++;
+              this.name = items[Math.floor(Math.random()*items.length)];
+            } else {
+              this.name = this.name;
+            }
+            this.type = newType;
+          }
+        }
+        split() {
+          if (this.mass <= 3) return [this]; // 太小无法分裂
+          const pieces = Math.floor(Math.random() * 3) + 2; // 2-4个碎片
+          const fragments = [];
+          let remainingMass = this.mass * 0.8; // 总质量损失20%
+          for (let i = 0; i < pieces; i++) {
+            // 最后一个碎片获得剩余所有质量
+            let fragMass;
+            if (i === pieces - 1) {
+              fragMass = remainingMass;
+            } else {
+              fragMass = remainingMass * (Math.random() * 0.5 + 0.1); // 获得10%-60%的剩余质量
+              remainingMass -= fragMass;
+            }
+            // 随机速度方向
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy) + Math.random() * 2;
+            const vx = this.vx * 0.5 + Math.cos(angle) * speed * 0.5;
+            const vy = this.vy * 0.5 + Math.sin(angle) * speed * 0.5;
+            // 随机颜色变化
+            const colorVariation = 0.2;
+            const color = [
+              Math.max(0, Math.min(1, this.color[0] + (Math.random() - 0.5) * colorVariation)),
+              Math.max(0, Math.min(1, this.color[1] + (Math.random() - 0.5) * colorVariation)),
+              Math.max(0, Math.min(1, this.color[2] + (Math.random() - 0.5) * colorVariation))
+            ];
+            // 位置略微偏移
+            const offset = this.radius * 0.5;
+            const x = this.x + (Math.random() - 0.5) * offset;
+            const y = this.y + (Math.random() - 0.5) * offset;
+            const fragment = new CelestialBody(x, y, vx, vy, fragMass, color, '', '星际物质');
+            fragment.updateTypeAndName();
+            fragments.push(fragment);
+          }
+          return fragments;
+        }
+      }
+      // 创建太阳 - 修复后的代码
+      const sun = new CelestialBody(0, 0, 0, 0, SUN_MASS,
+        [1.0, 0.9, 0.0], // 黄色
+        '太阳', 'sun');
+      bodies.push(sun);
+      // 缓冲区数据
+      function createBuffers() {
+        // 位置缓冲区
+        const positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        // 大小缓冲区
+        const sizeBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, sizeBuffer);
+        // 颜色缓冲区
+        const colorBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+        return {
+          position: positionBuffer,
+          size: sizeBuffer,
+          color: colorBuffer
+        };
+      }
+      const buffers = createBuffers();
+      // 更新缓冲区数据
+      function updateBuffers() {
+        const allBodies = [...bodies, ...matter];
+        const positions = new Float32Array(allBodies.length * 2);
+        const sizes = new Float32Array(allBodies.length);
+        const colors = new Float32Array(allBodies.length * 3);
+        for (let i = 0; i < allBodies.length; i++) {
+          const body = allBodies[i];
+          positions[i * 2] = body.x;
+          positions[i * 2 + 1] = body.y;
+          sizes[i] = body.radius * 2;
+          colors[i * 3] = body.color[0];
+          colors[i * 3 + 1] = body.color[1];
+          colors[i * 3 + 2] = body.color[2];
+        }
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
+        gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.size);
+        gl.bufferData(gl.ARRAY_BUFFER, sizes, gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
+        gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
+        return allBodies.length;
+      }
+      // 绘制场景
+      function drawScene(count) {
+        gl.clearColor(0.0, 0.0, 0.05, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.useProgram(shaderProgram);
+        // 设置缓冲区
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
+        gl.vertexAttribPointer(programInfo.attribLocations.position, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(programInfo.attribLocations.position);
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.size);
+        gl.vertexAttribPointer(programInfo.attribLocations.size, 1, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(programInfo.attribLocations.size);
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
+        gl.vertexAttribPointer(programInfo.attribLocations.color, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(programInfo.attribLocations.color);
+        // 设置uniform变量
+        gl.uniform1f(programInfo.uniformLocations.scale, scale);
+        gl.uniform2f(programInfo.uniformLocations.center, sun.x, sun.y);
+        gl.uniform2f(programInfo.uniformLocations.resolution, canvas.width, canvas.height);
+        // 绘制点
+        gl.drawArrays(gl.POINTS, 0, count);
+        // 绘制名称标签
+        drawLabels();
+      }
+      // 创建一个单独的2D canvas用于绘制标签
+      const labelCanvas = document.createElement('canvas');
+      labelCanvas.width = canvas.width;
+      labelCanvas.height = canvas.height;
+      labelCanvas.style.position = 'absolute';
+      labelCanvas.style.top = '0';
+      labelCanvas.style.left = '0';
+      labelCanvas.style.pointerEvents = 'none'; // 让鼠标事件穿透到下层canvas
+      document.body.appendChild(labelCanvas);
+      // 使用单独的Canvas 2D上下文绘制标签
+      function drawLabels() {
+        const ctx = labelCanvas.getContext('2d');
+        // 清除之前的标签
+        ctx.clearRect(0, 0, labelCanvas.width, labelCanvas.height);
+        ctx.font = '12px Arial';
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'center';
+        for (const body of bodies) {
+          if (body.type !== 'sun' && body.type !== '星际物质') {
+            const screenX = (body.x - sun.x) * scale + labelCanvas.width / 2;
+            const screenY = (body.y - sun.y) * scale + labelCanvas.height / 2;
+            ctx.fillText(body.name + ` (${body.type})`, screenX, screenY - body.radius * scale - 5);
+          }
+        }
+      }
+      // 确保在窗口大小改变时更新标签canvas的尺寸
+      window.addEventListener('resize', () => {
+        labelCanvas.width = canvas.width;
+        labelCanvas.height = canvas.height;
+      });
+      function calculateCircularVelocity(mass, distance) {
+        return Math.sqrt(G * mass / distance);
+      }
+      // 生成随机星际物质
+      function spawnMatterReal() {
+        // 在太阳周围随机位置生成
+        const mass = Math.random() * 3.0 + 0.5
+        const distance = Math.random() * 300 + 100;
+        const angle = Math.random() * Math.PI * 2;
+        const x = sun.x + Math.cos(angle) * distance;
+        const y = sun.y + Math.sin(angle) * distance;
+        // 计算初速度（使其围绕太阳旋转）
+        const velo = calculateCircularVelocity(SUN_MASS, distance)
+        const orbitSpeed = velo * 0.95 + Math.random() * velo * 0.1;
+        const vx = -Math.sin(angle) * orbitSpeed;
+        const vy = Math.cos(angle) * orbitSpeed;
+        // 随机颜色
+        const color = [
+          0.5 + Math.random() * 0.5,
+          0.5 + Math.random() * 0.5,
+          0.5 + Math.random() * 0.5
+        ];
+        const newMatter = new CelestialBody(x, y, vx, vy, mass, color, '', '星际物质');
+        matter.push(newMatter);
+      }
+      function spawnMatter() {
+        if (bodies.length > MAX_OBJECTS) {
+          return;
+        }
+        const now = Date.now();
+        if (now - lastMatterSpawn < nextSpawnInterval || !gameRunning) return;
+        nextSpawnInterval = matterSpawnInterval * 2 * Math.random()
+        lastMatterSpawn = now;
+        const num = Math.floor(Math.random() * 4)
+        for (i = 0; i < num; i++) {
+          spawnMatterReal()
+        }
+      }
+      // 处理碰撞
+      function handleCollision(body1, body2) {
+        if (body1.type == 'sun') {
+          return body1;
+        }
+        if (body2.type == 'sun') {
+          return body2;
+        }
+        // 确定哪个天体更大
+        let larger, smaller;
+        if (body1.mass >= body2.mass) {
+          larger = body1;
+          smaller = body2;
+        } else {
+          larger = body2;
+          smaller = body1;
+        }
+        // 合并后的质量
+        const totalMass = larger.mass + smaller.mass;
+        // 动量守恒计算新速度
+        larger.vx = (larger.vx * larger.mass + smaller.vx * smaller.mass) / totalMass;
+        larger.vy = (larger.vy * larger.mass + smaller.vy * smaller.mass) / totalMass;
+        // 更新质量和半径
+        larger.mass = totalMass;
+        larger.radius = Math.pow(totalMass, RADIUS_FACTOR) * SCALE_FACTOR;
+        // 更新类型和名称
+        larger.updateTypeAndName();
+        return larger;
+      }
+      // 更新游戏状态
+      function updateGame(dt) {
+        if (!gameRunning) return;
+        // 生成新物质
+        spawnMatter();
+        // 更新太阳状态
+        updateSun();
+        // 更新所有天体
+        for (let i = 0; i < bodies.length; i++) {
+
+          bodies[i].update(dt);
+          const sunDist = Math.sqrt(Math.pow(bodies[i].x - sun.x, 2) + Math.pow(bodies[i].y - sun.y, 2))
+          if (bodies[i].type != 'sun' && (sunDist >= PURGE_DISTANCE || sunDist < (bodies[i].radius + sun.radius))) {
+            bodies.splice(i, 1);
+            i--;
+            continue;
+          }
+
+          if (bodies[i])
+          // 应用玩家引力场
+          if (mouseDown) {
+            bodies[i].applyPlayerGravity(mouseX, mouseY, gravityStrength, false, dt);
+          }
+          // 应用玩家斥力场
+          if (rightMouseDown) {
+            bodies[i].applyPlayerGravity(mouseX, mouseY, gravityStrength, true, dt);
+          }
+          // 天体之间的引力和碰撞
+          for (let j = i + 1; j < bodies.length; j++) {
+
+            if (bodies[i].type !== 'sun' && bodies[j].type !== 'sun') {
+              const collision = bodies[i].applyGravity(bodies[j], dt);
+              if (collision) {
+                const merged = handleCollision(bodies[i], bodies[j]);
+                if (merged === bodies[i]) {
+                  bodies.splice(j, 1);
+                  j--;
+                } else {
+                  bodies.splice(i, 1);
+                  i--;
+                  break;
+                }
+              }
+            }
+          }
+          // 星际物质的引力和碰撞
+          if (bodies[i].type !== 'sun') {
+            for (let j = 0; j < matter.length; j++) {
+              const collision = bodies[i].applyGravity(matter[j], dt);
+              if (collision) {
+                handleCollision(bodies[i], matter[j]);
+                matter.splice(j, 1);
+                j--;
+              }
+            }
+          }
+        }
+        // 星际物质之间的碰撞
+        for (let i = 0; i < matter.length; i++) {
+          matter[i].update(dt);
+
+          const sunDist = Math.sqrt(Math.pow(matter[i].x - sun.x, 2) + Math.pow(matter[i].y - sun.y, 2))
+          if (sunDist >= PURGE_DISTANCE || sunDist < sun.radius) {
+            matter.splice(i, 1);
+            i--;
+            continue;
+          }
+
+          // 应用玩家引力场
+          if (mouseDown) {
+            matter[i].applyPlayerGravity(mouseX, mouseY, gravityStrength, false, dt);
+          }
+          // 应用玩家斥力场
+          if (rightMouseDown) {
+            matter[i].applyPlayerGravity(mouseX, mouseY, gravityStrength, true, dt);
+          }
+          // 与太阳的引力和碰撞
+          const collisionWithSun = matter[i].applyGravity(sun, dt);
+          if (collisionWithSun) {
+            handleCollision(sun, matter[i]);
+            matter.splice(i, 1);
+            i--;
+            continue;
+          }
+          // 星际物质之间的碰撞
+          for (let j = i + 1; j < matter.length; j++) {
+            const dist = Math.sqrt(Math.pow(matter[i].x - matter[j].x, 2) + Math.pow(matter[i].y - matter[j].y, 2));
+            if (dist < 3.5) {
+              const merged = handleCollision(matter[i], matter[j]);
+              // 如果合并后的质量达到小行星阈值，将其移至bodies数组
+              if (merged.mass >= ASTEROID_THRESHOLD) {
+                bodies.push(merged);
+                matter.splice(matter.indexOf(merged), 1);
+              }
+              if (merged === matter[i]) {
+                matter.splice(j, 1);
+                j--;
+              } else {
+                matter.splice(i, 1);
+                i--;
+                break;
+              }
+            }
+          }
+        }
+        // 更新UI
+        updateUI();
+      }
+      // 更新太阳状态
+      function updateSun() {
+        // 根据游戏时间更新太阳外观
+        sun.x = 0.0
+        sun.y = 0.0
+        sun.mass = SUN_MASS
+        if (gameTime >= RED_GIANT_TIME) {
+          // 红巨星阶段
+          const progress = (gameTime - RED_GIANT_TIME) / (GAME_DURATION - RED_GIANT_TIME);
+          sun.radius = 40 + 80 * 1;
+          sun.color = [1.0, 0.3, 0.1]; // 红色
+        } else if (gameTime >= SUN_EXPANSION_TIME) {
+          // 膨胀阶段
+          const progress = (gameTime - SUN_EXPANSION_TIME) / (RED_GIANT_TIME - SUN_EXPANSION_TIME);
+          sun.radius = 40 + 80 * progress;
+          sun.color = [1.0, 0.6 - 0.3 * progress, 0.0]; // 从黄橙色到红橙色
+        } else {
+          // 正常阶段
+          const progress = gameTime / SUN_EXPANSION_TIME;
+          sun.radius = 40
+          sun.color = [1.0, 0.9 - 0.3 * progress, 0.0]; // 从黄色到黄橙色
+        }
+        // 游戏结束检查
+        if (gameTime >= GAME_DURATION) {
+          gameOver();
+        }
+      }
+      // 游戏结束
+      function gameOver() {
+        gameRunning = false;
+        document.getElementById('gameOver').style.display = 'block';
+      }
+      // 更新UI
+      function updateUI() {
+        // 更新引力强度显示
+        document.getElementById('gravityValue').textContent = gravityStrength;
+        // 更新星体数量
+        document.getElementById('bodyCount').textContent = bodies.length;
+
+        document.getElementById('spawnSpeedValue').textContent = SPAWN_INTERVAL_CONST / matterSpawnInterval
+        // 找到最大的行星
+        let largestPlanet = null;
+        for (const body of bodies) {
+          if (body.type !== 'sun' && body.mass >= ASTEROID_THRESHOLD) {
+            if (!largestPlanet || body.mass > largestPlanet.mass) {
+              largestPlanet = body;
+            }
+          }
+        }
+        // 更新最大行星显示
+        if (largestPlanet) {
+          document.getElementById('largestPlanet').textContent = `${largestPlanet.name} (质量: ${Math.round(largestPlanet.mass)})`;
+        } else {
+          document.getElementById('largestPlanet').textContent = '无';
+        }
+        // 更新游戏时间
+        const minutes = Math.floor(gameTime / 60);
+        const seconds = Math.floor(gameTime % 60);
+        document.getElementById('gameTime').textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      }
+      // 事件监听器
+      canvas.addEventListener('mousemove', (e) => {
+        const worldX = (e.clientX - canvas.width / 2) / scale + sun.x;
+        const worldY = (e.clientY - canvas.height / 2) / scale + sun.y;
+        mouseX = worldX
+        mouseY = worldY;
+      });
+      
+      canvas.addEventListener('mousedown', (e) => {
+        const worldX = (e.clientX - canvas.width / 2) / scale + sun.x;
+        const worldY = (e.clientY - canvas.height / 2) / scale + sun.y;
+
+        if (e.button === 0 || e.button === 2) {
+          mouseX = worldX
+          mouseY = worldY
+        }
+
+        if (e.button === 0) {
+          mouseDown = true;
+          console.log("点击位置: (" + worldX + ", " + worldY + ")")
+        } else if (e.button === 2) {
+          rightMouseDown = true;
+          
+          // 添加调试信息
+          console.log("点击位置:", worldX, worldY);
+          console.log("天体数量:", bodies.length);
+          
+          for (let i = 0; i < bodies.length; i++) {
+            const body = bodies[i];
+            if (body.type === 'sun') continue;
+            const dist = Math.sqrt(Math.pow(body.x - worldX, 2) + Math.pow(body.y - worldY, 2));
+            console.log(body.name, "距离:", dist, "半径:", body.radius);
+            if (dist < body.radius) {
+              console.log("点击到天体:", body.name);
+              // 分裂天体
+              const fragments = body.split();
+              if (fragments.length > 1) {
+                // 移除原天体
+                bodies.splice(i, 1);
+                // 添加碎片
+                for (const fragment of fragments) {
+                  if (fragment.mass >= ASTEROID_THRESHOLD) {
+                    bodies.push(fragment);
+                  } else {
+                    matter.push(fragment);
+                  }
+                }
+              }
+              break;
+            }
+          }
+        }
+      });
+
+      canvas.addEventListener('mouseup', (e) => {
+        if (e.button === 0) {
+          mouseDown = false;
+        } else if (e.button === 2) {
+          rightMouseDown = false;
+        }
+      });
+      canvas.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+      });
+      // 滚轮缩放
+      canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        if (e.deltaY < 0) {
+          // 放大
+          scale *= 1.1;
+        } else {
+          // 缩小
+          scale *= 0.9;
+        }
+        // 限制缩放范围
+        scale = Math.max(0.1, Math.min(scale, 5.0));
+      });
+      // 引力强度滑块
+      document.getElementById('gravityStrength').addEventListener('input', (e) => {
+        gravityStrength = parseInt(e.target.value);
+        document.getElementById('gravityValue').textContent = gravityStrength;
+      });
+      document.getElementById('spawnSpeed').addEventListener('input', (e) => {
+        const spawnSpeed = parseInt(e.target.value);
+        matterSpawnInterval = Math.floor(SPAWN_INTERVAL_CONST / spawnSpeed);
+        document.getElementById('spawnSpeedValue').textContent = spawnSpeed;
+      });
+      // 重新开始按钮
+      document.getElementById('restartButton').addEventListener('click', () => {
+        // 重置游戏状态
+        gameTime = 0;
+        gameRunning = true;
+        bodies = [sun]; // 只保留太阳
+        matter = [];
+        // 重置太阳
+        sun.radius = 30;
+        sun.color = [1.0, 0.9, 0.0];
+        // 隐藏游戏结束界面
+        document.getElementById('gameOver').style.display = 'none';
+      });
+      // 游戏循环
+      let lastTime = 0;
+
+      function gameLoop(currentTime) {
+        if (lastTime === 0) {
+          lastTime = currentTime;
+        }
+        const deltaTime = (currentTime - lastTime) / 1000 * TIME_SCALE; // 转换为秒
+        lastTime = currentTime;
+        if (gameRunning) {
+          gameTime += deltaTime / TIME_SCALE;
+        }
+        // 更新游戏状态
+        updateGame(deltaTime);
+        // 更新缓冲区并绘制
+        const count = updateBuffers();
+        drawScene(count);
+        // 继续循环
+        requestAnimationFrame(gameLoop);
+      }
+      // 开始游戏循环
+      requestAnimationFrame(gameLoop);
+    </script>
+  </body>
+</html>
