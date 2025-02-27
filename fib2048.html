@@ -2,7 +2,7 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>斐波那契块游戏</title>
     <style>
       body {
@@ -312,6 +312,53 @@
       .instructions ul {
         padding-left: 20px;
       }
+
+       /* 移动端优化 */
+      @media (max-width: 500px) {
+        .game-container {
+          width: 300px;
+          height: 300px;
+          padding: 10px;
+        }
+        
+        .grid-container {
+          gap: 10px;
+        }
+        
+        .header {
+          max-width: 300px;
+        }
+        
+        .title {
+          font-size: 28px;
+        }
+        
+        .score-container {
+          padding: 10px 15px;
+          font-size: 20px;
+          height: 30px;
+          line-height: 20px;
+        }
+        
+        .tile {
+          font-size: 28px;
+        }
+        
+        .instructions {
+          max-width: 300px;
+          font-size: 14px;
+        }
+      }
+
+      /* 禁用页面缩放和滚动 */
+      html, body {
+        touch-action: manipulation;
+        overflow: hidden;
+        position: fixed;
+        width: 100%;
+        height: 100%;
+      }
+
     </style>
   </head>
   <body>
@@ -671,6 +718,61 @@
             event.preventDefault();
           }
         });
+        // 触摸事件处理
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchEndX = 0;
+        let touchEndY = 0;
+
+        const gameContainer = document.querySelector('.game-container');
+
+        gameContainer.addEventListener('touchstart', (event) => {
+          touchStartX = event.touches[0].clientX;
+          touchStartY = event.touches[0].clientY;
+        });
+
+        gameContainer.addEventListener('touchmove', (event) => {
+          // 防止滑动时页面滚动
+          event.preventDefault();
+        });
+
+        gameContainer.addEventListener('touchend', (event) => {
+          touchEndX = event.changedTouches[0].clientX;
+          touchEndY = event.changedTouches[0].clientY;
+          
+          handleSwipe();
+        });
+        
+        // 阻止默认触摸行为
+        document.addEventListener('touchmove', function(event) {
+          event.preventDefault();
+        }, { passive: false });
+
+        function handleSwipe() {
+          const dx = touchEndX - touchStartX;
+          const dy = touchEndY - touchStartY;
+          
+          // 确定主要的滑动方向
+          if (Math.abs(dx) > Math.abs(dy)) {
+            // 水平滑动
+            if (Math.abs(dx) > 20) { // 添加最小滑动距离阈值
+              if (dx > 0) {
+                moveTiles('right');
+              } else {
+                moveTiles('left');
+              }
+            }
+          } else {
+            // 垂直滑动
+            if (Math.abs(dy) > 20) { // 添加最小滑动距离阈值
+              if (dy > 0) {
+                moveTiles('down');
+              } else {
+                moveTiles('up');
+              }
+            }
+          }
+        }
         // 重新开始游戏
         function restartGame() {
           state.grid = Array(4).fill().map(() => Array(4).fill(0));
