@@ -65,7 +65,7 @@
   <body>
     <canvas id="gameCanvas"></canvas>
     <div id="ui">
-      <p>太阳系模拟游戏 1.4.0</p>
+      <p>太阳系模拟游戏 1.4.1</p>
       <p>长按鼠标左键可以生成引力场</p>
       <p>长按鼠标右键可以生成斥力场</p>
       <div>
@@ -126,9 +126,8 @@
       let rightMouseDown = false;
       let gravityStrength = 50;
       let bodyIdCounter = 1;
-      let matterSpawnInterval = SPAWN_INTERVAL_CONST / 20; // 每秒生成物质的间隔（毫秒）
+      let spawnSpeedFactor = 20; // 初始速度因子
       let lastMatterSpawn = 0;
-      let nextSpawnInterval = matterSpawnInterval;
 
       const englishPlanetNames = [
         "Nexus", "Astralis", "Chronos", "Zephyria", "Oblivion", "Elysium", "Novaris",
@@ -286,7 +285,7 @@
             return true; // 发生碰撞
           }
 
-          if (body.type != 'sun' && dist > 3000) {
+          if (body.type != 'sun' && dist > 5000) {
             return false;
           }
 
@@ -312,8 +311,8 @@
           const dy = y - this.y;
           const distSq = dx * dx + dy * dy;
           const dist = Math.sqrt(distSq);
-          if (dist < 50) return; // 太近不应用力
-          if (dist > 3000) return; // 太远不应用力
+          if (dist < 15) return; // 太近不应用力
+          if (dist > 5000) return; // 太远不应用力
           // 引力计算
           const grav = G * PLAYER_G_BONUS * strength / 50;
           const force = grav * this.mass / distSq;
@@ -594,15 +593,30 @@
         if (bodies.length > MAX_OBJECTS) {
           return;
         }
+        
         const now = Date.now();
-        if (now - lastMatterSpawn < nextSpawnInterval || !gameRunning) return;
-        nextSpawnInterval = matterSpawnInterval * 1.5 * Math.random()
-        lastMatterSpawn = now;
-        const num = Math.floor(Math.random() * 5)
-        for (i = 0; i < num; i++) {
-          spawnMatterReal()
+        
+        // 计算基于速度因子的生成概率
+        // 使用概率模型而不是固定间隔，使生成更加平滑
+        const elapsedTime = now - lastMatterSpawn;
+        const baseInterval = SPAWN_INTERVAL_CONST / spawnSpeedFactor;
+        const spawnProbability = elapsedTime / baseInterval;
+        
+        // 使用概率决定是否生成物质
+        if (Math.random() < spawnProbability && gameRunning) {
+          lastMatterSpawn = now;
+          
+          // 根据速度因子动态调整一次生成的数量
+          // 速度越快，一次生成的数量越多
+          const baseCount = Math.min(5, Math.max(1, Math.floor(spawnSpeedFactor / 20)));
+          const num = Math.floor(Math.random() * baseCount) + 1;
+          
+          for (let i = 0; i < num; i++) {
+            spawnMatterReal();
+          }
         }
       }
+
       // 处理碰撞
       function handleCollision(body1, body2) {
         if (body1.type == 'sun') {
@@ -787,7 +801,8 @@
         // 更新星体数量
         document.getElementById('bodyCount').textContent = bodies.length;
 
-        document.getElementById('spawnSpeedValue').textContent = SPAWN_INTERVAL_CONST / matterSpawnInterval
+        const displayValue = (spawnSpeedFactor / 20).toFixed(1) + "x";
+        document.getElementById('spawnSpeedValue').textContent = displayValue;
         // 找到最大的行星
         let largestPlanet = null;
         for (const body of bodies) {
@@ -890,10 +905,25 @@
         gravityStrength = parseInt(e.target.value);
         document.getElementById('gravityValue').textContent = gravityStrength;
       });
+      // 修改滑块事件监听器
       document.getElementById('spawnSpeed').addEventListener('input', (e) => {
-        const spawnSpeed = parseInt(e.target.value);
-        matterSpawnInterval = Math.floor(SPAWN_INTERVAL_CONST / spawnSpeed);
-        document.getElementById('spawnSpeedValue').textContent = spawnSpeed;
+        const sliderValue = parseInt(e.target.value);
+        
+        // 使用非线性映射使控制更加平滑
+        if (sliderValue <= 100) {
+          // 1-100范围内缓慢增长
+          spawnSpeedFactor = sliderValue;
+        } else if (sliderValue <= 300) {
+          // 100-300范围内中等增长
+          spawnSpeedFactor = 100 + (sliderValue - 100) * 2;
+        } else {
+          // 300-600范围内快速增长
+          spawnSpeedFactor = 500 + (sliderValue - 300) * 5;
+        }
+        
+        // 更新显示值，显示为相对于初始值的倍数
+        const displayValue = (spawnSpeedFactor / 20).toFixed(1) + "x";
+        document.getElementById('spawnSpeedValue').textContent = displayValue;
       });
       // 重新开始按钮
       document.getElementById('restartButton').addEventListener('click', () => {
