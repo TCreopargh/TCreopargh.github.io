@@ -65,7 +65,9 @@
   <body>
     <canvas id="gameCanvas"></canvas>
     <div id="ui">
+      <p>太阳系模拟游戏 1.1</p>
       <p>长按鼠标左键可以生成引力场</p>
+      <p>长按鼠标右键可以生成斥力场</p>
       <div>
         <label for="gravityStrength">引力强度: </label>
         <input type="range" id="gravityStrength" min="1" max="1000" value="50">
@@ -108,7 +110,7 @@
       const TIME_SCALE = 6.0;
       const G = 10
       const PLAYER_G_BONUS = 1000
-      const SUN_MASS = 1024
+      const SUN_MASS = 10000
       const SCALE_FACTOR = 1
       const RADIUS_FACTOR = 0.26
       const PURGE_DISTANCE = 2000
