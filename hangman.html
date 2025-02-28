@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hanging Man 游戏</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    
+    .game-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+    }
+    
+    .hangman-container {
+      position: relative;
+      width: 200px;
+      height: 250px;
+      margin-bottom: 20px;
+    }
+    
+    .hangman-part {
+      position: absolute;
+      stroke: #333;
+      stroke-width: 3;
+      fill: none;
+    }
+    
+    .word-container {
+      display: flex;
+      margin: 20px 0;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    
+    .letter-box {
+      width: 30px;
+      height: 40px;
+      border-bottom: 3px solid #333;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 24px;
+      font-weight: bold;
+    }
+    
+    .keyboard {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 5px;
+      margin-top: 20px;
+      max-width: 500px;
+    }
+    
+    .key {
+      width: 40px;
+      height: 40px;
+      background-color: #f0f0f0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .key:hover {
+      background-color: #e0e0e0;
+    }
+    
+    .key.used {
+      background-color: #ccc;
+      color: #666;
+      cursor: not-allowed;
+    }
+    
+    .key.correct {
+      background-color: #8BC34A;
+      color: white;
+    }
+    
+    .key.wrong {
+      background-color: #F44336;
+      color: white;
+    }
+    
+    .result-message {
+      font-size: 24px;
+      font-weight: bold;
+      margin: 20px 0;
+      text-align: center;
+    }
+    
+    .win {
+      color: #4CAF50;
+    }
+    
+    .lose {
+      color: #F44336;
+    }
+    
+    .button {
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 10px 5px;
+    }
+    
+    .button:hover {
+      background-color: #388E3C;
+    }
+    
+    .button.selected {
+      background-color: #2E7D32;
+      box-shadow: 0 0 5px rgba(0,0,0,0.3);
+    }
+    
+    .button.secondary {
+      background-color: #2196F3;
+    }
+    
+    .button.secondary:hover {
+      background-color: #1976D2;
+    }
+    
+    .hidden {
+      display: none;
+    }
+    
+    .difficulty-selector {
+      margin: 15px 0;
+      display: flex;
+      gap: 10px;
+    }
+    
+    .game-stats {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 400px;
+      margin: 10px 0;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Hanging Man 游戏</h1>
+  
+  <div class="difficulty-selector">
+    <button id="easyMode" class="button selected">简单模式</button>
+    <button id="hardMode" class="button">困难模式</button>
+  </div>
+  
+  <div class="game-stats">
+    <span>难度: <span id="currentMode">简单</span></span>
+    <span>剩余机会: <span id="remainingChances">6</span></span>
+  </div>
+  
+  <div class="game-container">
+    <div class="hangman-container">
+      <svg width="200" height="250" viewBox="0 0 200 250">
+        <!-- 绞刑架底座 -->
+        <line x1="20" y1="230" x2="100" y2="230" class="hangman-part scaffold" style="display: none;"></line>
+        <!-- 绞刑架立柱 -->
+        <line x1="60" y1="230" x2="60" y2="30" class="hangman-part scaffold" style="display: none;"></line>
+        <!-- 绞刑架横梁 -->
+        <line x1="60" y1="30" x2="150" y2="30" class="hangman-part scaffold" style="display: none;"></line>
+        <!-- 绞刑架绳子 -->
+        <line x1="150" y1="30" x2="150" y2="50" class="hangman-part" style="display: none;"></line>
+        <!-- 头 -->
+        <circle cx="150" cy="70" r="20" class="hangman-part" style="display: none;"></circle>
+        <!-- 身体 -->
+        <line x1="150" y1="90" x2="150" y2="150" class="hangman-part" style="display: none;"></line>
+        <!-- 左臂 -->
+        <line x1="150" y1="110" x2="130" y2="130" class="hangman-part" style="display: none;"></line>
+        <!-- 右臂 -->
+        <line x1="150" y1="110" x2="170" y2="130" class="hangman-part" style="display: none;"></line>
+        <!-- 左腿 -->
+        <line x1="150" y1="150" x2="130" y2="190" class="hangman-part" style="display: none;"></line>
+        <!-- 右腿 -->
+        <line x1="150" y1="150" x2="170" y2="190" class="hangman-part" style="display: none;"></line>
+      </svg>
+    </div>
+    
+    <div class="word-container" id="wordContainer"></div>
+    
+    <div class="keyboard" id="keyboard"></div>
+    
+    <div class="result-message hidden" id="resultMessage"></div>
+    
+    <button class="button hidden" id="restartBtn">重新开始</button>
+  </div>
+  
+  <script>
+    // 单词列表 - 扩展版
+    const words = [
+    // 水果
+    'APPLE', 'BANANA', 'ORANGE', 'PEAR', 'GRAPE', 'LEMON', 'MELON', 'PEACH', 'CHERRY', 'MANGO', 'KIWI', 'COCONUT', 'STRAWBERRY', 'BLUEBERRY', 'PINEAPPLE', 'WATERMELON', 'POMEGRANATE', 'AVOCADO', 'APRICOT', 'BLACKBERRY', 'RASPBERRY', 'PLUM', 'GUAVA', 'PAPAYA', 'DRAGONFRUIT',
+    
+    // 计算机相关
+    'COMPUTER', 'KEYBOARD', 'MOUSE', 'SCREEN', 'PROGRAM', 'FUNCTION', 'ALGORITHM', 'VARIABLE', 'OBJECT', 'JAVASCRIPT', 'HTML', 'DEVELOPER', 'BROWSER', 'DATABASE', 'NETWORK', 'SERVER', 'CLIENT', 'INTERFACE', 'FRAMEWORK', 'LIBRARY', 'PYTHON', 'CODING', 'SOFTWARE', 'HARDWARE', 'INTERNET', 'WEBSITE', 'CLOUD', 'STORAGE', 'PROCESSOR', 'MEMORY', 'FIREWALL', 'ROUTER', 'ENCRYPTION', 'BLOCKCHAIN', 'COMPILER', 'PYTHON', 'LINUX',
+    
+    // 游戏相关
+    'HANGMAN', 'GAME', 'PLAYER', 'LETTER', 'GUESS', 'WORD', 'CORRECT', 'PUZZLE', 'CHALLENGE', 'SCORE', 'LEVEL', 'VICTORY', 'DEFEAT', 'CONSOLE', 'CONTROLLER', 'CHARACTER', 'STRATEGY', 'ADVENTURE', 'SIMULATION', 'MULTIPLAYER', 'ACHIEVEMENT', 'QUEST', 'MISSION', 'BOSS', 'CHECKPOINT', 'HIGHSCORE', 'LEADERBOARD',
+    
+    // 动物
+    'ELEPHANT', 'GIRAFFE', 'TIGER', 'LION', 'MONKEY', 'DOLPHIN', 'PENGUIN', 'ZEBRA', 'KANGAROO', 'PANDA', 'KOALA', 'EAGLE', 'SHARK', 'TURTLE', 'RABBIT', 'CROCODILE', 'ALLIGATOR', 'GORILLA', 'CHEETAH', 'LEOPARD', 'OCTOPUS', 'SQUID', 'BUTTERFLY', 'DRAGONFLY', 'RHINOCEROS', 'HIPPOPOTAMUS', 'FLAMINGO', 'PEACOCK', 'OSTRICH', 'HEDGEHOG', 'SQUIRREL', 'RACCOON',
+
+    // 职业
+    'TEACHER', 'DOCTOR', 'ENGINEER', 'ARTIST', 'WRITER', 'MUSICIAN', 'SCIENTIST', 'CHEF', 'PILOT', 'ACTOR', 'DESIGNER', 'LAWYER', 'FARMER', 'PROGRAMMER', 'ARCHITECT', 'ACCOUNTANT', 'JOURNALIST', 'PHOTOGRAPHER', 'FIREFIGHTER', 'POLICEMAN', 'NURSE', 'DENTIST', 'ELECTRICIAN', 'PLUMBER', 'CARPENTER', 'MECHANIC', 'BAKER', 'BUTCHER', 'CASHIER', 'WAITER', 'RECEPTIONIST',
+    
+    // 科学
+    'PHYSICS', 'CHEMISTRY', 'BIOLOGY', 'ASTRONOMY', 'MATHEMATICS', 'GEOLOGY', 'PSYCHOLOGY', 'EXPERIMENT', 'THEORY', 'RESEARCH', 'DISCOVERY', 'QUANTUM', 'RELATIVITY', 'EVOLUTION', 'MOLECULE', 'ELEMENT', 'COMPOUND', 'REACTION', 'GRAVITY', 'MAGNETISM', 'ELECTRICITY', 'RADIATION', 'ECOSYSTEM', 'CLIMATE', 'PARTICLE', 'NUCLEUS', 'ELECTRON', 'NEUTRON', 'PROTON', 'PHOTON',
+    
+    // 城市
+    'BEIJING', 'SHANGHAI', 'TOKYO', 'NEWYORK', 'LONDON', 'PARIS', 'BERLIN', 'ROME', 'MADRID', 'MOSCOW', 'SYDNEY', 'SINGAPORE', 'DUBAI', 'HONGKONG', 'BANGKOK', 'SEOUL', 'ISTANBUL', 'CAIRO', 'MUMBAI', 'TORONTO', 'CHICAGO', 'LOSANGELES', 'SANFRANCISCO', 'RIODEJANEIRO', 'MEXICOCITY',
+    
+    // 食物
+    'PIZZA', 'BURGER', 'PASTA', 'SUSHI', 'TACO', 'CURRY', 'NOODLE', 'DUMPLING', 'SANDWICH', 'SALAD', 'STEAK', 'CHICKEN', 'SEAFOOD', 'CHOCOLATE', 'ICECREAM', 'CAKE', 'COOKIE', 'BREAD', 'CHEESE', 'YOGURT', 'COFFEE', 'WINE', 'BEER', 'JUICE', 'SMOOTHIE',
+    
+    // 交通工具
+    'CAR', 'BUS', 'TRAIN', 'AIRPLANE', 'BICYCLE', 'MOTORCYCLE', 'SHIP', 'BOAT', 'HELICOPTER', 'SUBWAY', 'TRAM', 'TAXI', 'SCOOTER', 'TRUCK', 'FERRY', 'ROCKET', 'SPACESHIP',
+    
+    // 其他
+    'MOUNTAIN', 'OCEAN', 'FOREST', 'DESERT', 'ISLAND', 'RIVER', 'WEATHER', 'CLIMATE', 'JOURNEY', 'ADVENTURE', 'MYSTERY', 'TREASURE', 'UNIVERSE', 'GALAXY', 'PLANET', 'STAR', 'MOON', 'SUNRISE', 'SUNSET', 'RAINBOW', 'THUNDER', 'LIGHTNING', 'HURRICANE', 'TORNADO', 'EARTHQUAKE', 'VOLCANO', 'WATERFALL', 'CANYON', 'VALLEY', 'BEACH', 'CORAL', 'GLACIER'
+    ];
+
+    
+    // 游戏状态
+    let currentWord = '';
+    let guessedLetters = [];
+    let wrongGuesses = 0;
+    let gameOver = false;
+    let isHardMode = false;
+    let maxWrongGuesses = 6;
+    
+    // DOM 元素
+    const wordContainer = document.getElementById('wordContainer');
+    const keyboard = document.getElementById('keyboard');
+    const resultMessage = document.getElementById('resultMessage');
+    const restartBtn = document.getElementById('restartBtn');
+    const hangmanParts = document.querySelectorAll('.hangman-part');
+    const scaffoldParts = document.querySelectorAll('.scaffold');
+    const easyModeBtn = document.getElementById('easyMode');
+    const hardModeBtn = document.getElementById('hardMode');
+    const currentModeDisplay = document.getElementById('currentMode');
+    const remainingChancesDisplay = document.getElementById('remainingChances');
+    
+    // 设置难度模式
+    easyModeBtn.addEventListener('click', () => {
+      isHardMode = false;
+      easyModeBtn.classList.add('selected');
+      hardModeBtn.classList.remove('selected');
+      currentModeDisplay.textContent = '简单';
+      if (!gameOver) {
+        initGame();
+      }
+    });
+    
+    hardModeBtn.addEventListener('click', () => {
+      isHardMode = true;
+      hardModeBtn.classList.add('selected');
+      easyModeBtn.classList.remove('selected');
+      currentModeDisplay.textContent = '困难';
+      if (!gameOver) {
+        initGame();
+      }
+    });
+    
+    // 初始化游戏
+    function initGame() {
+      // 重置游戏状态
+      guessedLetters = [];
+      wrongGuesses = 0;
+      gameOver = false;
+      
+      // 随机选择单词
+      currentWord = words[Math.floor(Math.random() * words.length)];
+      
+      // 清除之前的内容
+      wordContainer.innerHTML = '';
+      keyboard.innerHTML = '';
+      resultMessage.classList.add('hidden');
+      restartBtn.classList.add('hidden');
+      
+      // 隐藏所有吊死鬼部分
+      hangmanParts.forEach(part => {
+        part.style.display = 'none';
+      });
+      
+      if (isHardMode) {
+        scaffoldParts.forEach(part => {
+            part.style.display = 'block';
+        });
+        document.querySelector('.hangman-part:not(.scaffold)').style.display = 'block';
+        maxWrongGuesses = 6;
+        remainingChancesDisplay.textContent = '6';
+      } else {
+        maxWrongGuesses = 10; // 改为10次机会
+        remainingChancesDisplay.textContent = '10'; // 显示10次机会
+      }
+      
+      // 创建单词占位符
+      for (let i = 0; i < currentWord.length; i++) {
+        const letterBox = document.createElement('div');
+        letterBox.className = 'letter-box';
+        letterBox.dataset.letter = currentWord[i];
+        wordContainer.appendChild(letterBox);
+      }
+      
+      // 创建键盘
+      for (let i = 65; i <= 90; i++) {
+        const letter = String.fromCharCode(i);
+        const key = document.createElement('div');
+        key.className = 'key';
+        key.textContent = letter;
+        key.addEventListener('click', () => handleGuess(letter));
+        keyboard.appendChild(key);
+      }
+    }
+    
+    // 处理猜测
+    function handleGuess(letter) {
+      if (gameOver || guessedLetters.includes(letter)) {
+        return;
+      }
+      
+      guessedLetters.push(letter);
+      
+      // 更新键盘按键状态
+      const keyElement = [...keyboard.children].find(key => key.textContent === letter);
+      
+      if (currentWord.includes(letter)) {
+        // 猜对了
+        keyElement.classList.add('used', 'correct');
+        
+        // 显示所有匹配的字母
+        const letterBoxes = [...wordContainer.children];
+        letterBoxes.forEach(box => {
+          if (box.dataset.letter === letter) {
+            box.textContent = letter;
+          }
+        });
+        
+        // 检查是否赢了
+        checkWin();
+      } else {
+        // 猜错了
+        keyElement.classList.add('used', 'wrong');
+        wrongGuesses++;
+        
+        // 更新剩余机会显示
+        remainingChancesDisplay.textContent = Math.max(0, (isHardMode ? 6 : 10) - wrongGuesses);
+        
+        // 显示吊死鬼的下一部分
+        let nextPartIndex = wrongGuesses - 1;
+        // 在handleGuess函数中修改显示吊死鬼部分的逻辑：
+        if (!isHardMode) {
+        // 简单模式下，先画支架部分，然后再画人
+        if (nextPartIndex < scaffoldParts.length) {
+            scaffoldParts[nextPartIndex].style.display = 'block';
+        } else {
+            // 支架画完后，开始画人
+            const bodyPartIndex = nextPartIndex - scaffoldParts.length;
+            const bodyParts = [...document.querySelectorAll('.hangman-part:not(.scaffold)')];
+            if (bodyPartIndex < bodyParts.length) {
+            bodyParts[bodyPartIndex].style.display = 'block';
+            }
+        }
+        } else {
+            // 困难模式下，直接画人体（从第二个部分开始，因为绳子已经显示）
+            const bodyParts = [...document.querySelectorAll('.hangman-part:not(.scaffold)')];
+            // 从索引1开始，跳过绳子
+            if (nextPartIndex + 1 < bodyParts.length) {
+                bodyParts[nextPartIndex + 1].style.display = 'block';
+            }
+        }
+        // 检查是否输了
+        if ((isHardMode && wrongGuesses >= 6) || (!isHardMode && wrongGuesses >= 10)) {
+          endGame(false);
+        }
+      }
+    }
+    
+    // 检查是否赢了
+    function checkWin() {
+      const letterBoxes = [...wordContainer.children];
+      const allGuessed = letterBoxes.every(box => box.textContent);
+      
+      if (allGuessed) {
+        endGame(true);
+      }
+    }
+    
+    // 结束游戏
+    function endGame(isWin) {
+      gameOver = true;
+      
+      resultMessage.textContent = isWin ? '恭喜你赢了！' : `游戏结束！正确单词是: ${currentWord}`;
+      resultMessage.className = `result-message ${isWin ? 'win' : 'lose'}`;
+      resultMessage.classList.remove('hidden');
+      
+      restartBtn.classList.remove('hidden');
+      
+      // 如果输了，显示所有未猜到的字母
+      if (!isWin) {
+        const letterBoxes = [...wordContainer.children];
+        letterBoxes.forEach(box => {
+          if (!box.textContent) {
+            box.textContent = box.dataset.letter;
+            box.style.color = '#F44336';
+          }
+        });
+      }
+    }
+    
+    // 重新开始游戏
+    restartBtn.addEventListener('click', initGame);
+    
+    // 添加键盘事件
+    document.addEventListener('keydown', (event) => {
+      const letter = event.key.toUpperCase();
+      if (/^[A-Z]$/.test(letter)) {
+        handleGuess(letter);
+      }
+    });
+    
+    // 初始化游戏
+    initGame();
+</script>
+</body>
+</html>
