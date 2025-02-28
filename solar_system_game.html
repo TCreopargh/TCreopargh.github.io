@@ -584,16 +584,14 @@
               }
             }
           }
-          // 星际物质的引力和碰撞
-          if (bodies[i].type !== 'sun') {
-            for (let j = 0; j < matter.length; j++) {
-              const collision = bodies[i].applyGravity(matter[j], dt);
-              if (collision) {
-                handleCollision(bodies[i], matter[j]);
-                matter.splice(j, 1);
-                j--;
-              }
-            }
+          
+          // 与太阳的引力和碰撞
+          const collisionWithSun = bodies[i].applyGravity(sun, dt);
+          if (collisionWithSun) {
+            handleCollision(sun, bodies[i]);
+            matter.splice(i, 1);
+            i--;
+            continue;
           }
         }
         // 星际物质之间的碰撞
