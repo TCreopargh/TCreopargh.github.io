@@ -263,10 +263,6 @@
             return true; // 发生碰撞
           }
 
-          if (body.mass < ASTEROID_THRESHOLD) {
-            return false; // 质量太小不计算
-          }
-
           if (body.type != 'sun' && dist > 3000) {
             return false;
           }
@@ -481,7 +477,7 @@
       function spawnMatterReal() {
         // 在太阳周围随机位置生成
         const mass = Math.random() * 0.6 + 0.4
-        const distance = Math.random() * 300 + 100;
+        const distance = Math.random() * 300 + 50 + sun.radius;
         const angle = Math.random() * Math.PI * 2;
         const x = sun.x + Math.cos(angle) * distance;
         const y = sun.y + Math.sin(angle) * distance;
@@ -586,6 +582,17 @@
               }
             }
           }
+
+          // 星际物质的引力和碰撞
+          if (bodies[i].type !== 'sun') {
+            for (let j = 0; j < matter.length; j++) {
+              const collision = bodies[i].applyGravity(matter[j], dt);
+              if (collision) {
+                handleCollision(bodies[i], matter[j]);
+                matter.splice(j, 1);
+                j--;
+              }
+            }
           
           // 与太阳的引力和碰撞
           if (bodies[i].type !== 'sun') {
