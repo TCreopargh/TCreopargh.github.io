@@ -110,7 +110,7 @@
       const TIME_SCALE = 6.0;
       const G = 10
       const PLAYER_G_BONUS = 1000
-      const SUN_MASS = 10000
+      const SUN_MASS = 6000
       const SCALE_FACTOR = 1
       const RADIUS_FACTOR = 0.26
       const PURGE_DISTANCE = 2000
@@ -486,7 +486,7 @@
         const x = sun.x + Math.cos(angle) * distance;
         const y = sun.y + Math.sin(angle) * distance;
         // 计算初速度（使其围绕太阳旋转）
-        const velo = calculateCircularVelocity(SUN_MASS, distance)
+        const velo = calculateCircularVelocity(sun.mass, distance)
         const orbitSpeed = velo * 0.95 + Math.random() * velo * 0.1;
         const vx = -Math.sin(angle) * orbitSpeed;
         const vy = Math.cos(angle) * orbitSpeed;
