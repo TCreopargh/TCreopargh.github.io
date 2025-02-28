@@ -65,7 +65,7 @@
   <body>
     <canvas id="gameCanvas"></canvas>
     <div id="ui">
-      <p>太阳系模拟游戏 1.3</p>
+      <p>太阳系模拟游戏 1.3.1</p>
       <p>长按鼠标左键可以生成引力场</p>
       <p>长按鼠标右键可以生成斥力场</p>
       <div>
@@ -593,9 +593,6 @@
                 j--;
               }
             }
-          
-          // 与太阳的引力和碰撞
-          if (bodies[i].type !== 'sun') {
             const collisionWithSun = bodies[i].applyGravity(sun, dt);
             if (collisionWithSun) {
               handleCollision(sun, bodies[i]);
