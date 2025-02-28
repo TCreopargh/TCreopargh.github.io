@@ -586,13 +586,13 @@
           }
           
           // 与太阳的引力和碰撞
-          const collisionWithSun = bodies[i].applyGravity(sun, dt);
-          if (collisionWithSun) {
-            handleCollision(sun, bodies[i]);
-            matter.splice(i, 1);
-            i--;
-            continue;
-          }
+         // const collisionWithSun = bodies[i].applyGravity(sun, dt);
+          //if (collisionWithSun) {
+          //  handleCollision(sun, bodies[i]);
+           // matter.splice(i, 1);
+           // i--;
+           // continue;
+          //}
         }
         // 星际物质之间的碰撞
         for (let i = 0; i < matter.length; i++) {
