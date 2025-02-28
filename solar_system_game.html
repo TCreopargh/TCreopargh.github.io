@@ -501,7 +501,7 @@
         }
         const now = Date.now();
         if (now - lastMatterSpawn < nextSpawnInterval || !gameRunning) return;
-        nextSpawnInterval = matterSpawnInterval * 2 * Math.random()
+        nextSpawnInterval = matterSpawnInterval * 1.5 * Math.random()
         lastMatterSpawn = now;
         const num = Math.floor(Math.random() * 4)
         for (i = 0; i < num; i++) {
