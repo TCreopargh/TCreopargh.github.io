@@ -379,38 +379,38 @@
       resizeCanvas();
       // 着色器程序
       const vsSource = `
-      attribute vec2 aPosition;
-      attribute float aSize;
-      attribute vec4 aColor;
-      
-      uniform float uScale;
-      uniform vec2 uCenter;
-      uniform vec2 uResolution;
-      
-      varying vec4 vColor;
-      
-      void main() {
-        vec2 position = (aPosition - uCenter) * uScale;
-        vec2 zeroToOne = position / uResolution + 0.5;
-        vec2 zeroToTwo = zeroToOne * 2.0;
-        vec2 clipSpace = zeroToTwo - 1.0;
-        gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
-        gl_PointSize = aSize * uScale;
-        vColor = aColor;
-      }
-    `;
+            attribute vec2 aPosition;
+            attribute float aSize;
+            attribute vec4 aColor;
+
+            uniform float uScale;
+            uniform vec2 uCenter;
+            uniform vec2 uResolution;
+
+            varying vec4 vColor;
+
+            void main() {
+              vec2 position = (aPosition - uCenter) * uScale;
+              vec2 zeroToOne = position / uResolution + 0.5;
+              vec2 zeroToTwo = zeroToOne * 2.0;
+              vec2 clipSpace = zeroToTwo - 1.0;
+              gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+              gl_PointSize = aSize * uScale;
+              vColor = aColor;
+            }
+          `;
       const fsSource = `
-      precision mediump float;
-      varying vec4 vColor;
-      
-      void main() {
-        float dist = distance(gl_PointCoord, vec2(0.5, 0.5));
-        if (dist > 0.5) {
-          discard;
-        }
-        gl_FragColor = vColor;
-      }
-    `;
+            precision mediump float;
+            varying vec4 vColor;
+
+            void main() {
+              float dist = distance(gl_PointCoord, vec2(0.5, 0.5));
+              if (dist > 0.5) {
+                discard;
+              }
+              gl_FragColor = vColor;
+            }
+          `;
       // 创建着色器程序
       function createShaderProgram(vs, fs) {
         const vertexShader = gl.createShader(gl.VERTEX_SHADER);
@@ -473,15 +473,56 @@
           this.type = type;
           this.createTime = Date.now();
           this.isFragment = false;
+          this.ax = 0;
+          this.ay = 0;
+        }
+        // 添加计算加速度的方法
+        calculateAcceleration(allBodies) {
+          if (this.type === "sun") return; // 太阳不受影响
+
+          this.ax = 0;
+          this.ay = 0;
+
+          // 计算来自太阳的引力
+          const sunDx = sun.x - this.x;
+          const sunDy = sun.y - this.y;
+          const sunDistSq = sunDx * sunDx + sunDy * sunDy;
+          const sunDist = Math.sqrt(sunDistSq);
+
+          if (sunDist > this.radius + sun.radius) {
+            const sunForce = (G * sun.mass) / sunDistSq;
+            const sunAngle = Math.atan2(sunDy, sunDx);
+            this.ax += Math.cos(sunAngle) * sunForce;
+            this.ay += Math.sin(sunAngle) * sunForce;
+          }
+
+          // 计算来自其他天体的引力
+          for (const body of allBodies) {
+            if (body === this || body.type === "sun") continue;
+
+            const dx = body.x - this.x;
+            const dy = body.y - this.y;
+            const distSq = dx * dx + dy * dy;
+            const dist = Math.sqrt(distSq);
+
+            if (dist <= this.radius + body.radius) continue; // 跳过碰撞的天体
+
+            const force = (G * body.mass) / distSq;
+            const angle = Math.atan2(dy, dx);
+            this.ax += Math.cos(angle) * force;
+            this.ay += Math.sin(angle) * force;
+          }
         }
         updatePosition(dt) {
+          this.vx += this.ax * dt;
+          this.vy += this.ay * dt;
           this.x += this.vx * dt;
           this.y += this.vy * dt;
         }
         update(dt) {
           // 更新位置
           if (this.type != "sun") {
-            this.updatePosition(dt)
+            this.updatePosition(dt);
           }
 
           // 只为非星际物质的天体记录轨迹
@@ -533,51 +574,8 @@
           const dy = body.y - this.y;
           const distSq = dx * dx + dy * dy;
           const dist = Math.sqrt(distSq);
-          if (dist < this.radius + body.radius) {
-            return true; // 发生碰撞
-          }
 
-          // 引力计算 F = G * m1 * m2 / r^2
-          const force = (G * this.mass * body.mass) / distSq;
-          // 应用力
-          const angle = Math.atan2(dy, dx);
-          const fx = Math.cos(angle) * force;
-          const fy = Math.sin(angle) * force;
-          // 加速度 a = F / m
-          const ax = fx / this.mass;
-          const ay = fy / this.mass;
-          if (body.type == 'sun' || Math.sqrt(Math.pow(ax, 2), Math.pow(ay, 2) >= MIN_ACCELERATION_DIFF)) {
-          // 更新速度
-            this.vx += ax * dt;
-            this.vy += ay * dt;
-          }
-          return false;
-        }
-        applyPlayerGravity(x, y, strength, isRepulsive, dt) {
-          if (this.type == "sun") {
-            return;
-          }
-          const dx = x - this.x;
-          const dy = y - this.y;
-          const distSq = dx * dx + dy * dy;
-          const dist = Math.sqrt(distSq);
-          if (dist < 20) return; // 太近不应用力
-          if (dist > 5000) return; // 太远不应用力
-          // 引力计算
-          const grav = (G * PLAYER_G_BONUS * strength) / 50;
-          const force = (grav * this.mass) / distSq;
-          // 应用力
-          const angle = Math.atan2(dy, dx);
-          const fx = Math.cos(angle) * force * (isRepulsive ? -1 : 1);
-          const fy = Math.sin(angle) * force * (isRepulsive ? -1 : 1);
-          // 加速度
-          const ax = fx / this.mass;
-          const ay = fy / this.mass;
-          if (Math.sqrt(Math.pow(ax, 2), Math.pow(ay, 2) >= MIN_ACCELERATION_DIFF)) {
-            // 更新速度
-            this.vx += ax * dt;
-            this.vy += ay * dt;
-          }
+          return dist < this.radius + body.radius; // 只返回是否碰撞
         }
         getType() {
           if (this.type === "sun") return "太阳";
@@ -1091,6 +1089,283 @@
         larger.updateTypeAndName();
         return larger;
       }
+
+      /**
+       * 将玩家的引力/斥力场应用到所有天体上
+       * @param {number} dt - 时间步长
+       */
+      function applyPlayerGravityToAll(dt) {
+        // 处理常规天体
+        for (const body of bodies) {
+          // 跳过太阳，太阳不受玩家引力场影响
+          if (body.type === "sun") continue;
+
+          // 应用玩家引力场
+          if (mouseDown) {
+            applyPlayerForceToBody(
+              body,
+              mouseX,
+              mouseY,
+              gravityStrength,
+              false,
+              dt
+            );
+          }
+
+          // 应用玩家斥力场
+          if (rightMouseDown) {
+            applyPlayerForceToBody(
+              body,
+              mouseX,
+              mouseY,
+              gravityStrength,
+              true,
+              dt
+            );
+          }
+        }
+
+        // 处理星际物质
+        for (const m of matter) {
+          // 应用玩家引力场
+          if (mouseDown) {
+            applyPlayerForceToBody(
+              m,
+              mouseX,
+              mouseY,
+              gravityStrength,
+              false,
+              dt
+            );
+          }
+
+          // 应用玩家斥力场
+          if (rightMouseDown) {
+            applyPlayerForceToBody(
+              m,
+              mouseX,
+              mouseY,
+              gravityStrength,
+              true,
+              dt
+            );
+          }
+        }
+      }
+
+      /**
+       * 将玩家的引力/斥力场应用到单个天体上
+       * @param {CelestialBody} body - 受力天体
+       * @param {number} x - 力场中心x坐标
+       * @param {number} y - 力场中心y坐标
+       * @param {number} strength - 力场强度
+       * @param {boolean} isRepulsive - 是否为斥力场
+       * @param {number} dt - 时间步长
+       */
+      function applyPlayerForceToBody(body, x, y, strength, isRepulsive, dt) {
+        const dx = x - body.x;
+        const dy = y - body.y;
+        const distSq = dx * dx + dy * dy;
+        const dist = Math.sqrt(distSq);
+
+        // 距离检查：太近或太远都不应用力
+        if (dist < 20 || dist > 5000) return;
+
+        // 计算引力/斥力
+        const grav = (G * PLAYER_G_BONUS * strength) / 50;
+        const force = (grav * body.mass) / distSq;
+
+        // 计算力的方向
+        const angle = Math.atan2(dy, dx);
+        const fx = Math.cos(angle) * force * (isRepulsive ? -1 : 1);
+        const fy = Math.sin(angle) * force * (isRepulsive ? -1 : 1);
+
+        // 计算加速度
+        const ax = fx / body.mass;
+        const ay = fy / body.mass;
+
+        // 检查加速度是否超过最小阈值
+        const accelMagnitude = Math.sqrt(ax * ax + ay * ay);
+        if (accelMagnitude >= MIN_ACCELERATION_DIFF) {
+          // 更新速度
+          body.vx += ax * dt;
+          body.vy += ay * dt;
+        }
+      }function handlePhysics(dt) {
+  // 第一步：计算所有天体的加速度
+  for (const body of bodies) {
+    if (body.type !== "sun") {
+      body.calculateAcceleration([...bodies, ...matter]);
+    }
+  }
+
+  for (const m of matter) {
+    m.calculateAcceleration([...bodies, ...matter]);
+  }
+
+  // 第二步：更新位置
+  for (let i = 0; i < bodies.length; i++) {
+    if (bodies[i].type !== "sun") {
+      bodies[i].updatePosition(dt);
+      bodies[i].update(dt); // 处理轨迹等其他更新
+    }
+  }
+
+  for (let i = 0; i < matter.length; i++) {
+    matter[i].updatePosition(dt);
+    matter[i].update(dt);
+  }
+
+  // 第三步：检测碰撞
+  // 处理天体之间的碰撞
+  for (let i = 0; i < bodies.length; i++) {
+    if (bodies[i].type === "sun") continue;
+
+    // 检查与太阳的碰撞
+    const sunDist = Math.sqrt(
+      Math.pow(bodies[i].x - sun.x, 2) + Math.pow(bodies[i].y - sun.y, 2)
+    );
+
+    if (
+      sunDist >= PURGE_DISTANCE ||
+      sunDist < bodies[i].radius + sun.radius
+    ) {
+      explosions.push(
+        new Explosion(
+          bodies[i].x,
+          bodies[i].y,
+          bodies[i].color,
+          bodies[i].radius
+        )
+      );
+      bodies.splice(i, 1);
+      i--;
+      continue;
+    }
+
+    // 检查与其他天体的碰撞
+    for (let j = i + 1; j < bodies.length; j++) {
+      if (bodies[j].type === "sun") continue;
+
+      const collision = checkCollision(bodies[i], bodies[j]);
+      if (collision) {
+        const merged = handleCollision(bodies[i], bodies[j]);
+        if (merged === bodies[i]) {
+          explosions.push(
+            new Explosion(
+              bodies[j].x,
+              bodies[j].y,
+              bodies[j].color,
+              bodies[j].radius
+            )
+          );
+          bodies.splice(j, 1);
+          j--;
+        } else {
+          explosions.push(
+            new Explosion(
+              bodies[i].x,
+              bodies[i].y,
+              bodies[i].color,
+              bodies[i].radius
+            )
+          );
+          bodies.splice(i, 1);
+          i--;
+          break;
+        }
+      }
+    }
+
+    // 检查与星际物质的碰撞
+    for (let j = 0; j < matter.length; j++) {
+      const collision = checkCollision(bodies[i], matter[j]);
+      if (collision) {
+        handleCollision(bodies[i], matter[j]);
+        matter.splice(j, 1);
+        j--;
+      }
+    }
+  }
+
+  // 新增：处理星际物质之间的碰撞
+  for (let i = 0; i < matter.length; i++) {
+    // 检查星际物质与太阳的碰撞
+    const sunDist = Math.sqrt(
+      Math.pow(matter[i].x - sun.x, 2) + Math.pow(matter[i].y - sun.y, 2)
+    );
+    
+    if (sunDist >= PURGE_DISTANCE || sunDist < matter[i].radius + sun.radius) {
+      // 如果与太阳碰撞，可能添加微小爆炸效果或直接移除
+      if (sunDist < matter[i].radius + sun.radius) {
+        handleCollision(sun, matter[i]); // 太阳吸收物质
+      }
+      matter.splice(i, 1);
+      i--;
+      continue;
+    }
+    
+    // 检查星际物质之间的碰撞
+    for (let j = i + 1; j < matter.length; j++) {
+      const collision = checkCollision(matter[i], matter[j]);
+      if (collision) {
+        const merged = handleCollision(matter[i], matter[j]);
+        
+        // 如果合并后的质量达到小行星阈值，将其移至bodies数组
+        if (merged.mass >= ASTEROID_THRESHOLD) {
+          bodies.push(merged);
+          
+          // 从matter数组中移除
+          if (merged === matter[i]) {
+            matter.splice(i, 1);
+            i--;
+            matter.splice(j - 1, 1); // j-1 因为i已经被移除
+          } else {
+            matter.splice(j, 1);
+            matter.splice(i, 1);
+            i--;
+          }
+          break;
+        } 
+        // 否则保留在matter数组中
+        else {
+          if (merged === matter[i]) {
+            matter.splice(j, 1);
+            j--;
+          } else {
+            matter.splice(i, 1);
+            i--;
+            break;
+          }
+        }
+      }
+    }
+  }
+}
+
+// 辅助函数：检查两个天体是否碰撞
+function checkCollision(body1, body2) {
+  const dx = body1.x - body2.x;
+  const dy = body1.y - body2.y;
+  const distSq = dx * dx + dy * dy;
+  const dist = Math.sqrt(distSq);
+  return dist < body1.radius + body2.radius;
+}
+
+      // 辅助函数：检查两个天体是否碰撞
+      function checkCollision(body1, body2) {
+        const dx = body1.x - body2.x;
+        const dy = body1.y - body2.y;
+        const distSq = dx * dx + dy * dy;
+        const dist = Math.sqrt(distSq);
+        return dist < body1.radius + body2.radius;
+      }
+
+      function handlePlayerControl(dt) {
+        if (mouseDown || rightMouseDown) {
+          applyPlayerGravityToAll(dt);
+        }
+      }
       // 更新游戏状态
       function updateGame(dt) {
         if (!gameRunning) return;
@@ -1099,170 +1374,9 @@
         // 更新太阳状态
         updateSun();
         // 更新所有天体
-        for (let i = 0; i < bodies.length; i++) {
-          bodies[i].update(dt);
-          const sunDist = Math.sqrt(
-            Math.pow(bodies[i].x - sun.x, 2) + Math.pow(bodies[i].y - sun.y, 2)
-          );
-          if (
-            bodies[i].type != "sun" &&
-            (sunDist >= PURGE_DISTANCE ||
-              sunDist < bodies[i].radius + sun.radius)
-          ) {
-            explosions.push(
-              new Explosion(
-                bodies[i].x,
-                bodies[i].y,
-                bodies[i].color,
-                bodies[i].radius
-              )
-            );
-            bodies.splice(i, 1);
-            i--;
-            continue;
-          }
+        handlePhysics(dt);
 
-          if (bodies[i])
-            if (mouseDown) {
-              // 应用玩家引力场
-              bodies[i].applyPlayerGravity(
-                mouseX,
-                mouseY,
-                gravityStrength,
-                false,
-                dt
-              );
-            }
-          // 应用玩家斥力场
-          if (rightMouseDown) {
-            bodies[i].applyPlayerGravity(
-              mouseX,
-              mouseY,
-              gravityStrength,
-              true,
-              dt
-            );
-          }
-          // 天体之间的引力和碰撞
-          for (let j = i + 1; j < bodies.length; j++) {
-            if (bodies[i].type !== "sun" && bodies[j].type !== "sun") {
-              const collision = bodies[i].applyGravity(bodies[j], dt);
-              if (collision) {
-                const merged = handleCollision(bodies[i], bodies[j]);
-                if (merged === bodies[i]) {
-                  // 添加爆炸效果 - 被消灭的是bodies[j]
-                  explosions.push(
-                    new Explosion(
-                      bodies[j].x,
-                      bodies[j].y,
-                      bodies[j].color,
-                      bodies[j].radius
-                    )
-                  );
-                  bodies.splice(j, 1);
-                  j--;
-                } else {
-                  // 添加爆炸效果 - 被消灭的是bodies[i]
-                  explosions.push(
-                    new Explosion(
-                      bodies[i].x,
-                      bodies[i].y,
-                      bodies[i].color,
-                      bodies[i].radius
-                    )
-                  );
-                  bodies.splice(i, 1);
-                  i--;
-                  break;
-                }
-              }
-            }
-          }
-
-          // 星际物质的引力和碰撞
-          if (bodies[i].type !== "sun") {
-            for (let j = 0; j < matter.length; j++) {
-              const collision = bodies[i].applyGravity(matter[j], dt);
-              if (collision) {
-                handleCollision(bodies[i], matter[j]);
-                matter.splice(j, 1);
-                j--;
-              }
-            }
-            const collisionWithSun = bodies[i].applyGravity(sun, dt);
-            if (collisionWithSun) {
-              handleCollision(sun, bodies[i]);
-              matter.splice(i, 1);
-              i--;
-              continue;
-            }
-          }
-        }
-        // 星际物质之间的碰撞
-        for (let i = 0; i < matter.length; i++) {
-          matter[i].update(dt);
-
-          const sunDist = Math.sqrt(
-            Math.pow(matter[i].x - sun.x, 2) + Math.pow(matter[i].y - sun.y, 2)
-          );
-          if (sunDist >= PURGE_DISTANCE || sunDist < sun.radius) {
-            matter.splice(i, 1);
-            i--;
-            continue;
-          }
-
-          // 应用玩家引力场
-          if (mouseDown) {
-            matter[i].applyPlayerGravity(
-              mouseX,
-              mouseY,
-              gravityStrength,
-              false,
-              dt
-            );
-          }
-          // 应用玩家斥力场
-          if (rightMouseDown) {
-            matter[i].applyPlayerGravity(
-              mouseX,
-              mouseY,
-              gravityStrength,
-              true,
-              dt
-            );
-          }
-          // 与太阳的引力和碰撞
-          const collisionWithSun = matter[i].applyGravity(sun, dt);
-          if (collisionWithSun) {
-            handleCollision(sun, matter[i]);
-            matter.splice(i, 1);
-            i--;
-            continue;
-          }
-          // 星际物质之间的碰撞
-          for (let j = i + 1; j < matter.length; j++) {
-            const dist = Math.sqrt(
-              Math.pow(matter[i].x - matter[j].x, 2) +
-                Math.pow(matter[i].y - matter[j].y, 2)
-            );
-            if (dist < 3.5) {
-              const merged = handleCollision(matter[i], matter[j]);
-              // 如果合并后的质量达到小行星阈值，将其移至bodies数组
-              if (merged.mass >= ASTEROID_THRESHOLD) {
-                bodies.push(merged);
-                matter.splice(matter.indexOf(merged), 1);
-              }
-              if (merged === matter[i]) {
-                matter.splice(j, 1);
-                j--;
-              } else {
-                matter.splice(i, 1);
-                i--;
-                break;
-              }
-            }
-          }
-        }
+        handlePlayerControl(dt);
         // 更新UI
         updateUI();
       }
