@@ -65,7 +65,7 @@
   <body>
     <canvas id="gameCanvas"></canvas>
     <div id="ui">
-      <p>太阳系模拟游戏 1.4.1</p>
+      <p>太阳系模拟游戏 1.5.0</p>
       <p>长按鼠标左键可以生成引力场</p>
       <p>长按鼠标右键可以生成斥力场</p>
       <div>
@@ -81,12 +81,13 @@
       </div>
       <div>
         <label for="spawnSpeed">物质生成速度: </label>
-        <input type="range" id="spawnSpeed" min="1" max="600" value="20" />
+        <input type="range" id="spawnSpeed" min="1" max="800" value="20" />
         <span id="spawnSpeedValue">20</span>
       </div>
       <div id="stats">
         <p>星体数量: <span id="bodyCount">1</span></p>
         <p>最大行星: <span id="largestPlanet">无</span></p>
+        <p>历史总星体数量: <span id="totalBodyCount">1</span></p>
       </div>
     </div>
     <div id="timer">
@@ -99,9 +100,13 @@
     </div>
     <script>
       // 游戏常量
-      const GAME_DURATION = 10 * 60; // 10分钟，以秒为单位
+      const GAME_DURATION = 1 * 35; // 10分钟，以秒为单位
       const SUN_EXPANSION_TIME = 0.6 * GAME_DURATION;
       const RED_GIANT_TIME = 0.9 * GAME_DURATION;
+      const SUN_SHRINK_TIME = 10;
+      const SUN_EXPLODE_TIME = 10;
+      const SUN_BEFORE_EXPLODE_TIME = 3;
+      const SUN_DEATH_TIME = GAME_DURATION - (SUN_BEFORE_EXPLODE_TIME + SUN_EXPLODE_TIME + SUN_SHRINK_TIME);
       // 天体类型阈值（质量）
       const ASTEROID_THRESHOLD = 12;
       const DWARF_PLANET_THRESHOLD = 40;
@@ -111,8 +116,9 @@
       const TIME_SCALE = 6.0;
       const G = 10;
       const PLAYER_G_BONUS = 1000;
-      const SUN_MASS = 2560;
+      const SUN_MASS = 3200;
       const SCALE_FACTOR = 1.5;
+      const MERGE_MASS_SCALE_FACTOR = 0.5;
       const RADIUS_FACTOR = 0.26;
       const PURGE_DISTANCE = 2000;
       // 游戏状态
@@ -130,6 +136,7 @@
       let spawnSpeedFactor = 20; // 初始速度因子
       let lastMatterSpawn = 0;
       let baseSpawnInterval = 60; // 基础生成间隔（毫秒），对应1x速度
+      let explosions = [];
 
       const englishPlanetNames = [
         "Nexus",
@@ -238,11 +245,108 @@
         "Lepus",
         "Libra",
         "Pictor",
+        "Asteria",
+        "Caelestis",
+        "Luminos",
+        "Stellaris",
+        "Eos",
+        "Nyx",
+        "Selene",
+        "Titania",
+        "Oberon",
+        "Umbra",
+        "Solara",
+        "Lunaris",
+        "Cosmica",
+        "Galaxia",
+        "Novarum",
+        "Auroris",
+        "Borealis",
+        "Eclipsis",
+        "Quasar",
+        "Pulsar",
+        "Neutron",
+        "Magnetar",
+        "Photonis",
+        "Graviton",
+        "Parallax",
+        "Apogee",
+        "Perigee",
+        "Aphelion",
+        "Perihelion",
+        "Equinox",
+        "Terminus",
+        "Horizon",
+        "Infinitum",
+        "Cosmos",
+        "Astrum",
+        "Sidus",
+        "Meteora",
+        "Cometa",
+        "Asteroidea",
+        "Planetar",
+        "Dwarfis",
+        "Gigantica",
+        "Supernova",
+        "Athena",
+        "Apollo",
+        "Artemis",
+        "Poseidon",
+        "Hermes",
+        "Hephaestus",
+        "Demeter",
+        "Hestia",
+        "Ares",
+        "Aphrodite",
+        "Hades",
+        "Persephone",
+        "Dionysus",
+        "Morpheus",
+        "Hypnos",
+        "Thanatos",
+        "Erebus",
+        "Hemera",
+        "Aion",
+        "Chronus",
+        "Gaia",
+        "Uranus",
+        "Oceanus",
+        "Tethys",
+        "Rhea",
+        "Theia",
+        "Phoebe",
+        "Mnemosyne",
+        "Themis",
+        "Iapetus",
+        "Coeus",
+        "Crius",
+        "Hyperion",
+        "Thalia",
+        "Calliope",
+        "Clio",
+        "Erato",
+        "Euterpe",
+        "Melpomene",
+        "Polyhymnia",
+        "Terpsichore",
+        "Urania",
+        "Asclepius",
+        "Eirene",
+        "Harmonia",
+        "Nemesis",
+        "Nike",
+        "Tyche",
+        "Zephyrus",
+        "Notus",
+        "Boreas",
+        "Eurus",
       ];
 
       // 获取Canvas和上下文
       const canvas = document.getElementById("gameCanvas");
       const gl = canvas.getContext("webgl");
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
       if (!gl) {
         alert("无法初始化WebGL，您的浏览器可能不支持。");
       }
@@ -258,13 +362,13 @@
       const vsSource = `
       attribute vec2 aPosition;
       attribute float aSize;
-      attribute vec3 aColor;
+      attribute vec4 aColor;
       
       uniform float uScale;
       uniform vec2 uCenter;
       uniform vec2 uResolution;
       
-      varying vec3 vColor;
+      varying vec4 vColor;
       
       void main() {
         vec2 position = (aPosition - uCenter) * uScale;
@@ -278,14 +382,14 @@
     `;
       const fsSource = `
       precision mediump float;
-      varying vec3 vColor;
+      varying vec4 vColor;
       
       void main() {
         float dist = distance(gl_PointCoord, vec2(0.5, 0.5));
         if (dist > 0.5) {
           discard;
         }
-        gl_FragColor = vec4(vColor, 1.0);
+        gl_FragColor = vColor;
       }
     `;
       // 创建着色器程序
@@ -372,13 +476,13 @@
               // 根据天体质量计算轨迹保留时间（1-5秒）
               let trailDuration = 1000;
               if (this.mass >= DWARF_PLANET_THRESHOLD) {
-                trailDuration = 2000;
+                trailDuration = 3000;
               }
               if (this.mass >= PLANET_THRESHOLD) {
-                trailDuration = 3500; 
+                trailDuration = 6000;
               }
               if (this.mass >= GAS_GIANT_THRESHOLD) {
-                trailDuration = 5000; 
+                trailDuration = 12000;
               }
 
               // 删除超过保留时间的轨迹点
@@ -396,10 +500,6 @@
           const dist = Math.sqrt(distSq);
           if (dist < this.radius + body.radius) {
             return true; // 发生碰撞
-          }
-
-          if (body.type != "sun" && dist > 5000) {
-            return false;
           }
 
           // 引力计算 F = G * m1 * m2 / r^2
@@ -534,6 +634,41 @@
           return fragments;
         }
       }
+      // 爆炸效果类
+      class Explosion {
+        constructor(x, y, color, maxRadius) {
+          this.x = x;
+          this.y = y;
+          this.color = color;
+          this.maxRadius = maxRadius * 3; // 最大半径是原始天体的3倍
+          this.currentRadius = 0;
+          this.alpha = 1.0;
+          this.duration = 1.5; // 爆炸持续1.5秒
+          this.elapsed = 0;
+        }
+
+        update(dt) {
+          this.elapsed += dt;
+          const progress = Math.min(this.elapsed / this.duration, 1.0);
+          this.currentRadius = this.maxRadius * progress;
+          this.alpha = 1.0 - progress;
+          return progress < 1.0; // 返回false表示爆炸已结束
+        }
+
+        draw(ctx) {
+          const screenX = (this.x - sun.x) * scale + ctx.canvas.width / 2;
+          const screenY = (this.y - sun.y) * scale + ctx.canvas.height / 2;
+
+          ctx.beginPath();
+          ctx.arc(screenX, screenY, this.currentRadius * scale, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${Math.floor(
+            this.color[0] * 255
+          )}, ${Math.floor(this.color[1] * 255)}, ${Math.floor(
+            this.color[2] * 255
+          )}, ${this.alpha})`;
+          ctx.fill();
+        }
+      }
       // 创建太阳 - 修复后的代码
       const sun = new CelestialBody(
         0,
@@ -569,22 +704,32 @@
         const allBodies = [...bodies, ...matter];
         const positions = new Float32Array(allBodies.length * 2);
         const sizes = new Float32Array(allBodies.length);
-        const colors = new Float32Array(allBodies.length * 3);
+        const colors = new Float32Array(allBodies.length * 4); // 修改为4个通道 (RGBA)
+
         for (let i = 0; i < allBodies.length; i++) {
           const body = allBodies[i];
           positions[i * 2] = body.x;
           positions[i * 2 + 1] = body.y;
           sizes[i] = body.radius * 2;
-          colors[i * 3] = body.color[0];
-          colors[i * 3 + 1] = body.color[1];
-          colors[i * 3 + 2] = body.color[2];
+
+          // 处理颜色数组 - 支持透明度
+          colors[i * 4] = body.color[0]; // R
+          colors[i * 4 + 1] = body.color[1]; // G
+          colors[i * 4 + 2] = body.color[2]; // B
+
+          // 如果颜色数组有第四个元素(Alpha)，则使用它，否则默认为1.0(完全不透明)
+          colors[i * 4 + 3] = body.color.length >= 4 ? body.color[3] : 1.0; // A
         }
+
         gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
         gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+
         gl.bindBuffer(gl.ARRAY_BUFFER, buffers.size);
         gl.bufferData(gl.ARRAY_BUFFER, sizes, gl.STATIC_DRAW);
+
         gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
         gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
+
         return allBodies.length;
       }
       // 绘制场景
@@ -616,7 +761,7 @@
         gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
         gl.vertexAttribPointer(
           programInfo.attribLocations.color,
-          3,
+          4,
           gl.FLOAT,
           false,
           0,
@@ -635,6 +780,7 @@
         gl.drawArrays(gl.POINTS, 0, count);
         // 绘制轨迹
         drawTrails();
+        drawExplosions();
         // 绘制名称标签
         drawLabels();
       }
@@ -664,6 +810,22 @@
               screenX,
               screenY - body.radius * scale - 5
             );
+          }
+        }
+      }
+      function drawExplosions() {
+        const ctx = explosionCanvas.getContext("2d");
+        ctx.clearRect(0, 0, explosionCanvas.width, explosionCanvas.height);
+
+        // 更新和绘制所有爆炸效果
+        for (let i = explosions.length - 1; i >= 0; i--) {
+          const explosion = explosions[i];
+          const isActive = explosion.update(1 / 60); // 假设60fps
+
+          if (isActive) {
+            explosion.draw(ctx);
+          } else {
+            explosions.splice(i, 1); // 移除已完成的爆炸效果
           }
         }
       }
@@ -741,9 +903,9 @@
             let lineWidth = 2;
             if (body.mass >= PLANET_THRESHOLD) {
               lineWidth = 3;
-            } 
+            }
             if (body.type >= GAS_GIANT_THRESHOLD) {
-              lineWidth = 4; 
+              lineWidth = 4;
             }
             ctx.lineWidth = lineWidth;
             ctx.stroke();
@@ -760,12 +922,24 @@
       trailCanvas.style.left = "0";
       trailCanvas.style.pointerEvents = "none";
       document.body.insertBefore(trailCanvas, labelCanvas); // 插入到标签 Canvas 之前
+
+      // 创建一个单独的2D canvas用于绘制爆炸效果
+      const explosionCanvas = document.createElement("canvas");
+      explosionCanvas.width = canvas.width;
+      explosionCanvas.height = canvas.height;
+      explosionCanvas.style.position = "absolute";
+      explosionCanvas.style.top = "0";
+      explosionCanvas.style.left = "0";
+      explosionCanvas.style.pointerEvents = "none";
+      document.body.insertBefore(explosionCanvas, trailCanvas); // 插入到轨迹Canvas之前
       // 确保在窗口大小改变时更新标签canvas的尺寸
       window.addEventListener("resize", () => {
         labelCanvas.width = canvas.width;
         labelCanvas.height = canvas.height;
         trailCanvas.width = canvas.width;
         trailCanvas.height = canvas.height;
+        explosionCanvas.width = canvas.width; // 添加这行
+        explosionCanvas.height = canvas.height; // 添加这行
       });
       function calculateCircularVelocity(mass, distance) {
         return Math.sqrt((G * mass) / distance);
@@ -773,7 +947,7 @@
       // 生成随机星际物质
       function spawnMatterReal() {
         // 在太阳周围随机位置生成
-        const mass = Math.random() * 0.6 + 0.4;
+        const mass = Math.random() * 0.8 + 0.2;
         const distance = Math.random() * 300 + 50 + sun.radius;
         const angle = Math.random() * Math.PI * 2;
         const x = sun.x + Math.cos(angle) * distance;
@@ -803,6 +977,11 @@
       }
       function spawnMatter() {
         if (bodies.length > MAX_OBJECTS) {
+          return;
+        }
+
+        if (gameTime >= (SUN_DEATH_TIME)) {
+          // 太阳爆炸
           return;
         }
 
@@ -853,14 +1032,16 @@
         }
         // 合并后的质量
         const totalMass = larger.mass + smaller.mass;
+        const mergedMass = larger.mass + smaller.mass * MERGE_MASS_SCALE_FACTOR;
         // 动量守恒计算新速度
         larger.vx =
-          (larger.vx * larger.mass + smaller.vx * smaller.mass) / totalMass;
+          (larger.vx * larger.mass + smaller.vx * smaller.mass * MERGE_MASS_SCALE_FACTOR) / mergedMass;
         larger.vy =
-          (larger.vy * larger.mass + smaller.vy * smaller.mass) / totalMass;
+          (larger.vy * larger.mass + smaller.vy * smaller.mass * MERGE_MASS_SCALE_FACTOR) / mergedMass;
+        
         // 更新质量和半径
-        larger.mass = totalMass;
-        larger.radius = Math.pow(totalMass, RADIUS_FACTOR) * SCALE_FACTOR;
+        larger.mass = mergedMass;
+        larger.radius = Math.pow(mergedMass, RADIUS_FACTOR) * SCALE_FACTOR;
         // 更新类型和名称
         larger.updateTypeAndName();
         return larger;
@@ -883,6 +1064,14 @@
             (sunDist >= PURGE_DISTANCE ||
               sunDist < bodies[i].radius + sun.radius)
           ) {
+            explosions.push(
+              new Explosion(
+                bodies[i].x,
+                bodies[i].y,
+                bodies[i].color,
+                bodies[i].radius
+              )
+            );
             bodies.splice(i, 1);
             i--;
             continue;
@@ -916,9 +1105,27 @@
               if (collision) {
                 const merged = handleCollision(bodies[i], bodies[j]);
                 if (merged === bodies[i]) {
+                  // 添加爆炸效果 - 被消灭的是bodies[j]
+                  explosions.push(
+                    new Explosion(
+                      bodies[j].x,
+                      bodies[j].y,
+                      bodies[j].color,
+                      bodies[j].radius
+                    )
+                  );
                   bodies.splice(j, 1);
                   j--;
                 } else {
+                  // 添加爆炸效果 - 被消灭的是bodies[i]
+                  explosions.push(
+                    new Explosion(
+                      bodies[i].x,
+                      bodies[i].y,
+                      bodies[i].color,
+                      bodies[i].radius
+                    )
+                  );
                   bodies.splice(i, 1);
                   i--;
                   break;
@@ -1020,23 +1227,59 @@
         sun.x = 0.0;
         sun.y = 0.0;
         sun.mass = SUN_MASS;
-        if (gameTime >= RED_GIANT_TIME) {
+        const SUN_BASE_RADIUS = 50;
+        const SUN_MAX_RADIUS = 180;
+        const SUPERNOVA_RADIUS = 1500;
+        const MIN_SHRINK_RADIUS = 5; // 收缩到最小的半径
+
+        if (gameTime >= GAME_DURATION - SUN_EXPLODE_TIME) {
+          // 爆炸阶段
+          const progress =
+            (gameTime - (GAME_DURATION - SUN_EXPLODE_TIME)) / SUN_EXPLODE_TIME;
+          sun.radius =
+            MIN_SHRINK_RADIUS +
+            (SUPERNOVA_RADIUS - MIN_SHRINK_RADIUS) * progress;
+
+          // 青蓝色，逐渐变得透明
+          // [R, G, B, A] 其中 A 是透明度，从1（不透明）到0（完全透明）
+          sun.color = [0.2, 0.7, 1.0, 1.0 - progress * 1.0]; // 青蓝色，逐渐透明
+        } else if (
+          gameTime >= SUN_DEATH_TIME &&
+          gameTime < SUN_DEATH_TIME + SUN_SHRINK_TIME
+        ) {
+          // 收缩阶段
+          const progress =
+            (gameTime - SUN_DEATH_TIME) /
+            SUN_SHRINK_TIME;
+          sun.radius =
+            SUN_MAX_RADIUS - (SUN_MAX_RADIUS - MIN_SHRINK_RADIUS) * progress;
+
+          // 从红色逐渐变蓝
+          sun.color = [
+            1.0 - 0.8 * progress, // 红色减少
+            0.15 + 0.55 * progress, // 绿色增加
+            0.1 + 0.9 * progress, // 蓝色增加
+          ]; // 从红色到青蓝色
+        } else if (gameTime >= SUN_DEATH_TIME) {
+          // stale, do nothing
+        } else if (gameTime >= RED_GIANT_TIME) {
           // 红巨星阶段
           const progress =
             (gameTime - RED_GIANT_TIME) / (GAME_DURATION - RED_GIANT_TIME);
-          sun.radius = 40 + 80 * 1;
-          sun.color = [1.0, 0.3, 0.1]; // 红色
+          sun.radius = SUN_MAX_RADIUS;
+          sun.color = [1.0, 0.15, 0.1]; // 红色
         } else if (gameTime >= SUN_EXPANSION_TIME) {
           // 膨胀阶段
           const progress =
             (gameTime - SUN_EXPANSION_TIME) /
             (RED_GIANT_TIME - SUN_EXPANSION_TIME);
-          sun.radius = 40 + 80 * progress;
-          sun.color = [1.0, 0.6 - 0.3 * progress, 0.0]; // 从黄橙色到红橙色
+          sun.radius =
+            SUN_BASE_RADIUS + (SUN_MAX_RADIUS - SUN_BASE_RADIUS) * progress;
+          sun.color = [1.0, 0.6 - 0.45 * progress, 0.0]; // 从黄橙色到红橙色
         } else {
           // 正常阶段
           const progress = gameTime / SUN_EXPANSION_TIME;
-          sun.radius = 40;
+          sun.radius = SUN_BASE_RADIUS;
           sun.color = [1.0, 0.9 - 0.3 * progress, 0.0]; // 从黄色到黄橙色
         }
         // 游戏结束检查
@@ -1055,6 +1298,7 @@
         document.getElementById("gravityValue").textContent = gravityStrength;
         // 更新星体数量
         document.getElementById("bodyCount").textContent = bodies.length;
+        document.getElementById("totalBodyCount").textContent = bodyIdCounter;
 
         const displayValue = (spawnSpeedFactor / 20).toFixed(1) + "x";
         document.getElementById("spawnSpeedValue").textContent = displayValue;
@@ -1179,9 +1423,12 @@
         } else if (sliderValue <= 300) {
           // 100-300范围内中等增长
           spawnSpeedFactor = 100 + (sliderValue - 100) * 2;
-        } else {
+        } else if (sliderValue <= 600) {
           // 300-600范围内快速增长
           spawnSpeedFactor = 500 + (sliderValue - 300) * 5;
+        } else {
+          // 600以上范围快速增长
+          spawnSpeedFactor = 2000 + (sliderValue - 600) * 10;
         }
 
         // 更新显示值，显示为相对于初始值的倍数
@@ -1197,7 +1444,9 @@
         matter = [];
         // 重置太阳
         sun.radius = 30;
+        explosions = []; // 清空爆炸效果
         sun.trail = []; // 清除太阳轨迹
+        bodyIdCounter = 0;
         sun.color = [1.0, 0.9, 0.0];
         // 隐藏游戏结束界面
         document.getElementById("gameOver").style.display = "none";
