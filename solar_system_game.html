@@ -65,9 +65,9 @@
   <body>
     <canvas id="gameCanvas"></canvas>
     <div id="ui">
-      <p>太阳系模拟游戏 1.5.1</p>
+      <p>太阳系模拟游戏 1.5.3</p>
       <p>长按鼠标左键可以生成引力场</p>
-      <p>长按鼠标右键可以生成斥力场</p>
+      <p>长按鼠标右键可以生成斥力场<br />在星体上右键可以引爆</p>
       <div>
         <label for="gravityStrength">引力强度: </label>
         <input
@@ -106,21 +106,30 @@
       const SUN_SHRINK_TIME = 10;
       const SUN_EXPLODE_TIME = 10;
       const SUN_BEFORE_EXPLODE_TIME = 3;
-      const SUN_DEATH_TIME = GAME_DURATION - (SUN_BEFORE_EXPLODE_TIME + SUN_EXPLODE_TIME + SUN_SHRINK_TIME);
+      const SUN_DEATH_TIME =
+        GAME_DURATION -
+        (SUN_BEFORE_EXPLODE_TIME + SUN_EXPLODE_TIME + SUN_SHRINK_TIME);
       // 天体类型阈值（质量）
-      const ASTEROID_THRESHOLD = 12;
-      const DWARF_PLANET_THRESHOLD = 40;
-      const PLANET_THRESHOLD = 120;
+      const ASTEROID_THRESHOLD = 16;
+      const DWARF_PLANET_THRESHOLD = 64;
+      const PLANET_THRESHOLD = 200;
       const MAX_OBJECTS = 3000;
-      const GAS_GIANT_THRESHOLD = 800;
-      const TIME_SCALE = 6.0;
+      const GAS_GIANT_THRESHOLD = 500;
+      const TIME_SCALE = 4.0;
       const G = 10;
       const PLAYER_G_BONUS = 1000;
       const SUN_MASS = 3200;
       const SCALE_FACTOR = 1.5;
-      const MERGE_MASS_SCALE_FACTOR = 0.5;
+      const MERGE_MASS_INITIAL_SCALER_FACTOR = 0.75;
+      const MERGE_MASS_HALF_THRESHOLD = 400;
       const RADIUS_FACTOR = 0.26;
       const PURGE_DISTANCE = 2000;
+      const MIN_ACCELERATION_DIFF = 0.02;
+
+      let mergeScaler = createSpecialFunction(
+        MERGE_MASS_HALF_THRESHOLD,
+        MERGE_MASS_INITIAL_SCALER_FACTOR
+      );
       // 游戏状态
       let gameTime = 0;
       let gameRunning = true;
@@ -342,6 +351,16 @@
         "Eurus",
       ];
 
+      function createSpecialFunction(t, initial) {
+        // 常数计算
+        const ln2 = Math.log(2);
+        const factor = t / ln2;
+
+        return function (x) {
+          return Math.exp(-(ln2 / t) * x) * initial;
+        };
+      }
+
       // 获取Canvas和上下文
       const canvas = document.getElementById("gameCanvas");
       const gl = canvas.getContext("webgl");
@@ -452,11 +471,18 @@
           this.trail = [];
           this.lastTrailTime = Date.now();
           this.type = type;
+          this.createTime = Date.now();
+          this.isFragment = false;
+        }
+        updatePosition(dt) {
+          this.x += this.vx * dt;
+          this.y += this.vy * dt;
         }
         update(dt) {
           // 更新位置
-          this.x += this.vx * dt;
-          this.y += this.vy * dt;
+          if (this.type != "sun") {
+            this.updatePosition(dt)
+          }
 
           // 只为非星际物质的天体记录轨迹
           if (this.type !== "星际物质" && this.type != "sun") {
@@ -493,7 +519,16 @@
             }
           }
         }
+        canBeAffected() {
+          if (this.isFragment == true && Date.now() - this.createTime < 500) {
+            return false;
+          }
+          return true;
+        }
         applyGravity(body, dt) {
+          if (!this.canBeAffected() || !body.canBeAffected()) {
+            return false;
+          }
           const dx = body.x - this.x;
           const dy = body.y - this.y;
           const distSq = dx * dx + dy * dy;
@@ -511,9 +546,11 @@
           // 加速度 a = F / m
           const ax = fx / this.mass;
           const ay = fy / this.mass;
+          if (body.type == 'sun' || Math.sqrt(Math.pow(ax, 2), Math.pow(ay, 2) >= MIN_ACCELERATION_DIFF)) {
           // 更新速度
-          this.vx += ax * dt;
-          this.vy += ay * dt;
+            this.vx += ax * dt;
+            this.vy += ay * dt;
+          }
           return false;
         }
         applyPlayerGravity(x, y, strength, isRepulsive, dt) {
@@ -536,9 +573,11 @@
           // 加速度
           const ax = fx / this.mass;
           const ay = fy / this.mass;
-          // 更新速度
-          this.vx += ax * dt;
-          this.vy += ay * dt;
+          if (Math.sqrt(Math.pow(ax, 2), Math.pow(ay, 2) >= MIN_ACCELERATION_DIFF)) {
+            // 更新速度
+            this.vx += ax * dt;
+            this.vy += ay * dt;
+          }
         }
         getType() {
           if (this.type === "sun") return "太阳";
@@ -570,7 +609,7 @@
         }
         split() {
           if (this.mass <= 3) return [this]; // 太小无法分裂
-          const pieces = Math.floor(Math.random() * 3) + 2; // 2-4个碎片
+          const pieces = Math.floor(Math.random() * 6) + 2; // 2-8个碎片
           const fragments = [];
           let remainingMass = this.mass * 0.8; // 总质量损失20%
           for (let i = 0; i < pieces; i++) {
@@ -586,7 +625,8 @@
             const angle = Math.random() * Math.PI * 2;
             const speed =
               Math.sqrt(this.vx * this.vx + this.vy * this.vy) +
-              Math.random() * 2;
+              Math.random() * 15 +
+              10;
             const vx = this.vx * 0.5 + Math.cos(angle) * speed * 0.5;
             const vy = this.vy * 0.5 + Math.sin(angle) * speed * 0.5;
             // 随机颜色变化
@@ -628,6 +668,7 @@
               "",
               "星际物质"
             );
+            fragment.isFragment = true;
             fragment.updateTypeAndName();
             fragments.push(fragment);
           }
@@ -980,7 +1021,7 @@
           return;
         }
 
-        if (gameTime >= (SUN_DEATH_TIME)) {
+        if (gameTime >= SUN_DEATH_TIME) {
           // 太阳爆炸
           return;
         }
@@ -1032,13 +1073,17 @@
         }
         // 合并后的质量
         const totalMass = larger.mass + smaller.mass;
-        const mergedMass = larger.mass + smaller.mass * MERGE_MASS_SCALE_FACTOR;
+        const addedMass = mergeScaler(larger.mass) * smaller.mass;
+        const mergedMass = larger.mass + addedMass;
         // 动量守恒计算新速度
-        larger.vx =
-          (larger.vx * larger.mass + smaller.vx * smaller.mass * MERGE_MASS_SCALE_FACTOR) / mergedMass;
-        larger.vy =
-          (larger.vy * larger.mass + smaller.vy * smaller.mass * MERGE_MASS_SCALE_FACTOR) / mergedMass;
-        
+
+        if (smaller.type != "星际物质") {
+          larger.vx =
+            (larger.vx * larger.mass + smaller.vx * addedMass) / mergedMass;
+          larger.vy =
+            (larger.vy * larger.mass + smaller.vy * addedMass) / mergedMass;
+        }
+
         // 更新质量和半径
         larger.mass = mergedMass;
         larger.radius = Math.pow(mergedMass, RADIUS_FACTOR) * SCALE_FACTOR;
@@ -1248,9 +1293,7 @@
           gameTime < SUN_DEATH_TIME + SUN_SHRINK_TIME
         ) {
           // 收缩阶段
-          const progress =
-            (gameTime - SUN_DEATH_TIME) /
-            SUN_SHRINK_TIME;
+          const progress = (gameTime - SUN_DEATH_TIME) / SUN_SHRINK_TIME;
           sun.radius =
             SUN_MAX_RADIUS - (SUN_MAX_RADIUS - MIN_SHRINK_RADIUS) * progress;
 
@@ -1359,7 +1402,6 @@
             const dist = Math.sqrt(
               Math.pow(body.x - worldX, 2) + Math.pow(body.y - worldY, 2)
             );
-            console.log(body.name, "距离:", dist, "半径:", body.radius);
             if (dist < body.radius) {
               console.log("点击到天体:", body.name);
               // 分裂天体
