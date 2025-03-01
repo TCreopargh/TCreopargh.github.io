@@ -520,15 +520,19 @@
           }
         }
         canBeAffected() {
+          if (this.type == "sun") {
+            return false; 
+          }
           if (this.isFragment == true && Date.now() - this.createTime < 500) {
             return false;
           }
           return true;
         }
         applyGravity(body, dt) {
-          if (!this.canBeAffected() || !body.canBeAffected()) {
+          if (!this.canBeAffected()) {
             return false;
           }
+
           const dx = body.x - this.x;
           const dy = body.y - this.y;
           const distSq = dx * dx + dy * dy;
@@ -546,7 +550,7 @@
           // 加速度 a = F / m
           const ax = fx / this.mass;
           const ay = fy / this.mass;
-          if (body.type == 'sun' || Math.sqrt(Math.pow(ax, 2), Math.pow(ay, 2) >= MIN_ACCELERATION_DIFF)) {
+          if (body.type == 'sun' || Math.sqrt(Math.pow(ax, 2), Math.pow(ay, 2)) >= MIN_ACCELERATION_DIFF) {
           // 更新速度
             this.vx += ax * dt;
             this.vy += ay * dt;
@@ -573,7 +577,7 @@
           // 加速度
           const ax = fx / this.mass;
           const ay = fy / this.mass;
-          if (Math.sqrt(Math.pow(ax, 2), Math.pow(ay, 2) >= MIN_ACCELERATION_DIFF)) {
+          if (Math.sqrt(Math.pow(ax, 2), Math.pow(ay, 2)) >= MIN_ACCELERATION_DIFF) {
             // 更新速度
             this.vx += ax * dt;
             this.vy += ay * dt;
@@ -1100,6 +1104,9 @@
         updateSun();
         // 更新所有天体
         for (let i = 0; i < bodies.length; i++) {
+          if (bodies[i] == null) {
+            continue;
+          }
           bodies[i].update(dt);
           const sunDist = Math.sqrt(
             Math.pow(bodies[i].x - sun.x, 2) + Math.pow(bodies[i].y - sun.y, 2)
@@ -1144,8 +1151,8 @@
             );
           }
           // 天体之间的引力和碰撞
-          for (let j = i + 1; j < bodies.length; j++) {
-            if (bodies[i].type !== "sun" && bodies[j].type !== "sun") {
+          for (let j = 0; j < bodies.length; j++) {
+            if (i !== j && bodies[i] && bodies[j]) {
               const collision = bodies[i].applyGravity(bodies[j], dt);
               if (collision) {
                 const merged = handleCollision(bodies[i], bodies[j]);
@@ -1188,13 +1195,6 @@
                 matter.splice(j, 1);
                 j--;
               }
-            }
-            const collisionWithSun = bodies[i].applyGravity(sun, dt);
-            if (collisionWithSun) {
-              handleCollision(sun, bodies[i]);
-              matter.splice(i, 1);
-              i--;
-              continue;
             }
           }
         }
