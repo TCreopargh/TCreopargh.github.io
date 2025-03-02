@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>康威生命游戏 - WebGL 无限画布版</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      cursor: crosshair;
+    }
+    .controls {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background-color: rgba(255, 255, 255, 0.8);
+      padding: 10px;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+      z-index: 100;
+    }
+    .controls button {
+      margin: 5px;
+      padding: 5px 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .controls button:hover {
+      background-color: #45a049;
+    }
+    .controls button:active {
+      background-color: #3e8e41;
+    }
+    .controls button.active {
+      background-color: #008CBA;
+    }
+    .controls input[type="range"] {
+      width: 100px;
+      margin: 0 10px;
+      vertical-align: middle;
+    }
+    .controls label {
+      margin: 0 5px;
+    }
+    .status {
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+      background-color: rgba(255, 255, 255, 0.8);
+      padding: 5px 10px;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+  <div class="controls">
+    <button id="playPause">播放</button>
+    <button id="step">单步</button>
+    <button id="clear">清除</button>
+    <button id="draw" class="active">绘制</button>
+    <button id="erase">擦除</button>
+    <button id="random">随机</button>
+    <div>
+      <label for="speed">速度:</label>
+      <input type="range" id="speed" min="1" max="60" value="10">
+      <span id="speedValue">10 FPS</span>
+    </div>
+    <div>
+      <label for="cellSize">缩放:</label>
+      <input type="range" id="cellSize" min="2" max="50" value="10">
+      <span id="cellSizeValue">10px</span>
+    </div>
+  </div>
+  <div class="status">
+    <span id="position">位置: 0, 0</span> | 
+    <span id="population">存活: 0</span> | 
+    <span id="generation">代数: 0</span>
+  </div>
+
+  <script>
+    // WebGL 着色器
+    const vertexShaderSource = `
+      attribute vec2 a_position;
+      uniform vec2 u_resolution;
+      uniform vec2 u_translation;
+      uniform float u_scale;
+
+      void main() {
+        // 转换为像素坐标
+        vec2 position = (a_position * u_scale) + u_translation;
+        
+        // 转换为 0.0 到 1.0
+        vec2 zeroToOne = position / u_resolution;
+        
+        // 转换为 0.0 到 2.0
+        vec2 zeroToTwo = zeroToOne * 2.0;
+        
+        // 转换为 -1.0 到 1.0 (裁剪空间)
+        vec2 clipSpace = zeroToTwo - 1.0;
+        
+        gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+      }
+    `;
+
+    const fragmentShaderSource = `
+      precision mediump float;
+      uniform vec4 u_color;
+      
+      void main() {
+        gl_FragColor = u_color;
+      }
+    `;
+
+    // 创建着色器程序
+    function createShaderProgram(gl, vertexShaderSource, fragmentShaderSource) {
+      function createShader(gl, type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+          console.error('着色器编译错误:', gl.getShaderInfoLog(shader));
+          gl.deleteShader(shader);
+          return null;
+        }
+        
+        return shader;
+      }
+      
+      const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+      const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+      
+      const program = gl.createProgram();
+      gl.attachShader(program, vertexShader);
+      gl.attachShader(program, fragmentShader);
+      gl.linkProgram(program);
+      
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        console.error('程序链接错误:', gl.getProgramInfoLog(program));
+        return null;
+      }
+      
+      return program;
+    }
+
+    // 主程序
+    document.addEventListener('DOMContentLoaded', () => {
+      const canvas = document.getElementById('gameCanvas');
+      const gl = canvas.getContext('webgl', { antialias: false });
+      
+      if (!gl) {
+        alert('无法初始化 WebGL，您的浏览器可能不支持此功能。');
+        return;
+      }
+      
+      // 设置 canvas 尺寸
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        gl.viewport(0, 0, canvas.width, canvas.height);
+      }
+      
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+      
+      // 创建着色器程序
+      const program = createShaderProgram(gl, vertexShaderSource, fragmentShaderSource);
+      gl.useProgram(program);
+      
+      // 获取着色器变量位置
+      const positionAttributeLocation = gl.getAttribLocation(program, 'a_position');
+      const resolutionUniformLocation = gl.getUniformLocation(program, 'u_resolution');
+      const translationUniformLocation = gl.getUniformLocation(program, 'u_translation');
+      const scaleUniformLocation = gl.getUniformLocation(program, 'u_scale');
+      const colorUniformLocation = gl.getUniformLocation(program, 'u_color');
+      
+      // 创建顶点缓冲区
+      const positionBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+      
+      // 启用属性
+      gl.enableVertexAttribArray(positionAttributeLocation);
+      gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+      
+      // 设置分辨率
+      gl.uniform2f(resolutionUniformLocation, canvas.width, canvas.height);
+      
+      // 游戏状态
+      let cellSize = 10; // 细胞大小
+      let offsetX = 0; // 视图偏移
+      let offsetY = 0;
+      let isDragging = false;
+      let lastMouseX = 0;
+      let lastMouseY = 0;
+      let isPlaying = false;
+      let speed = 10; // 每秒帧数
+      let generation = 0;
+      let drawMode = true; // true = 绘制, false = 擦除
+      
+      // 游戏网格 (使用 Map 存储活细胞，以支持无限画布)
+      let grid = new Map();
+      
+      // 获取细胞键
+      function getCellKey(x, y) {
+        return `${x},${y}`;
+      }
+      
+      // 设置细胞状态
+      function setCell(x, y, alive) {
+        const key = getCellKey(x, y);
+        if (alive) {
+          grid.set(key, true);
+        } else {
+          grid.delete(key);
+        }
+      }
+      
+      // 获取细胞状态
+      function getCell(x, y) {
+        return grid.has(getCellKey(x, y));
+      }
+      
+      // 计算下一代
+      function nextGeneration() {
+        const nextGrid = new Map();
+        const cellsToCheck = new Set();
+        
+        // 收集所有活细胞及其邻居
+        for (const key of grid.keys()) {
+          const [x, y] = key.split(',').map(Number);
+          cellsToCheck.add(key);
+          
+          // 添加所有邻居到检查列表
+          for (let dx = -1; dx <= 1; dx++) {
+            for (let dy = -1; dy <= 1; dy++) {
+              if (dx === 0 && dy === 0) continue;
+              const nx = x + dx;
+              const ny = y + dy;
+              cellsToCheck.add(getCellKey(nx, ny));
+            }
+          }
+        }
+        
+        // 对每个细胞应用生命游戏规则
+        for (const key of cellsToCheck) {
+          const [x, y] = key.split(',').map(Number);
+          let neighbors = 0;
+          
+          // 计算邻居数量
+          for (let dx = -1; dx <= 1; dx++) {
+            for (let dy = -1; dy <= 1; dy++) {
+              if (dx === 0 && dy === 0) continue;
+              if (getCell(x + dx, y + dy)) {
+                neighbors++;
+              }
+            }
+          }
+          
+          // 应用规则
+          if (getCell(x, y)) {
+            // 活细胞
+            if (neighbors === 2 || neighbors === 3) {
+              nextGrid.set(key, true); // 存活
+            }
+          } else {
+            // 死细胞
+            if (neighbors === 3) {
+              nextGrid.set(key, true); // 复活
+            }
+          }
+        }
+        
+        grid = nextGrid;
+        generation++;
+        updateStatusInfo();
+      }
+      
+      // 绘制网格
+      function drawGrid() {
+        gl.clearColor(0.95, 0.95, 0.95, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        
+        // 设置变换
+        gl.uniform2f(translationUniformLocation, offsetX, offsetY);
+        gl.uniform1f(scaleUniformLocation, cellSize);
+        
+        // 绘制网格线
+        drawGridLines();
+        
+        // 绘制活细胞
+        gl.uniform4f(colorUniformLocation, 0.1, 0.1, 0.1, 1.0);
+        
+        const vertices = [];
+        for (const key of grid.keys()) {
+          const [x, y] = key.split(',').map(Number);
+          
+          // 每个细胞绘制为一个正方形 (两个三角形)
+          vertices.push(
+            x, y,
+            x + 1, y,
+            x, y + 1,
+            
+            x + 1, y,
+            x + 1, y + 1,
+            x, y + 1
+          );
+        }
+        
+        if (vertices.length > 0) {
+          gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+          gl.drawArrays(gl.TRIANGLES, 0, vertices.length / 2);
+        }
+      }
+      
+      // 绘制网格线
+      function drawGridLines() {
+        // 只在缩放足够大时绘制网格线
+        if (cellSize < 5) return;
+        
+        gl.uniform4f(colorUniformLocation, 0.8, 0.8, 0.8, 1.0);
+        
+        // 计算可见区域中的网格线
+        const startX = Math.floor(-offsetX / cellSize);
+        const startY = Math.floor(-offsetY / cellSize);
+        const endX = Math.ceil((canvas.width - offsetX) / cellSize);
+        const endY = Math.ceil((canvas.height - offsetY) / cellSize);
+        
+        const lineVertices = [];
+        
+        // 水平线
+        for (let y = startY; y <= endY; y++) {
+          lineVertices.push(
+            startX, y,
+            endX, y
+          );
+        }
+        
+        // 垂直线
+        for (let x = startX; x <= endX; x++) {
+          lineVertices.push(
+            x, startY,
+            x, endY
+          );
+        }
+        
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineVertices), gl.STATIC_DRAW);
+        gl.lineWidth(1);
+        gl.drawArrays(gl.LINES, 0, lineVertices.length / 2);
+      }
+      
+      // 屏幕坐标转网格坐标
+      function screenToGrid(screenX, screenY) {
+        const x = Math.floor((screenX - offsetX) / cellSize);
+        const y = Math.floor((screenY - offsetY) / cellSize);
+        return { x, y };
+      }
+      
+      // 处理鼠标事件
+      canvas.addEventListener('mousedown', (e) => {
+        if (e.button === 0) { // 左键
+          const { x, y } = screenToGrid(e.clientX, e.clientY);
+          if (drawMode) {
+            setCell(x, y, true);
+          } else {
+            setCell(x, y, false);
+          }
+          drawGrid();
+          updateStatusInfo();
+        } else if (e.button === 1 || e.button === 2) { // 中键或右键
+          isDragging = true;
+          lastMouseX = e.clientX;
+          lastMouseY = e.clientY;
+          canvas.style.cursor = 'grabbing';
+        }
+      });
+      
+      canvas.addEventListener('mousemove', (e) => {
+      // 更新状态栏位置信息
+      const { x, y } = screenToGrid(e.clientX, e.clientY);
+      document.getElementById('position').textContent = `位置: ${x}, ${y}`;
+      
+      if (isDragging) {
+        // 平移视图
+        offsetX += e.clientX - lastMouseX;
+        offsetY += e.clientY - lastMouseY;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        drawGrid();
+      } else if (e.buttons & 1) { // 左键按下并移动
+        // 绘制或擦除
+        const { x, y } = screenToGrid(e.clientX, e.clientY);
+        if (drawMode) {
+          setCell(x, y, true);
+        } else {
+          setCell(x, y, false);
+        }
+        drawGrid();
+        updateStatusInfo();
+      }
+    });
+    
+    canvas.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        canvas.style.cursor = 'crosshair';
+      }
+    });
+    
+    canvas.addEventListener('mouseleave', () => {
+      isDragging = false;
+      canvas.style.cursor = 'crosshair';
+    });
+    
+    // 阻止右键菜单
+    canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+    });
+    
+    // 鼠标滚轮缩放
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      
+      const mouseX = e.clientX;
+      const mouseY = e.clientY;
+      
+      // 缩放前的网格坐标
+      const gridBefore = screenToGrid(mouseX, mouseY);
+      
+      // 调整缩放级别
+      if (e.deltaY < 0) {
+        cellSize = Math.min(50, cellSize * 1.1);
+      } else {
+        cellSize = Math.max(2, cellSize / 1.1);
+      }
+      
+      // 缩放后的网格坐标
+      const gridAfter = screenToGrid(mouseX, mouseY);
+      
+      // 调整偏移以保持鼠标下的点不变
+      offsetX += (gridAfter.x - gridBefore.x) * cellSize;
+      offsetY += (gridAfter.y - gridBefore.y) * cellSize;
+      
+      document.getElementById('cellSizeValue').textContent = `${Math.round(cellSize)}px`;
+      document.getElementById('cellSize').value = Math.round(cellSize);
+      
+      drawGrid();
+    });
+    
+    // 触摸事件支持
+    let touchStartX, touchStartY;
+    
+    canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+        
+        // 如果不是拖动模式，则绘制/擦除
+        if (!isDragging) {
+          const { x, y } = screenToGrid(touch.clientX, touch.clientY);
+          if (drawMode) {
+            setCell(x, y, true);
+          } else {
+            setCell(x, y, false);
+          }
+          drawGrid();
+          updateStatusInfo();
+        }
+      } else if (e.touches.length === 2) {
+        // 两指触摸，进入拖动模式
+        isDragging = true;
+        lastMouseX = e.touches[0].clientX;
+        lastMouseY = e.touches[0].clientY;
+      }
+      e.preventDefault();
+    });
+    
+    canvas.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        
+        // 如果移动距离足够大，认为是拖动
+        const dx = touch.clientX - touchStartX;
+        const dy = touch.clientY - touchStartY;
+        
+        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+          isDragging = true;
+        }
+        
+        if (isDragging) {
+          // 平移视图
+          offsetX += touch.clientX - lastMouseX;
+          offsetY += touch.clientY - lastMouseY;
+          lastMouseX = touch.clientX;
+          lastMouseY = touch.clientY;
+          drawGrid();
+        } else {
+          // 绘制或擦除
+          const { x, y } = screenToGrid(touch.clientX, touch.clientY);
+          if (drawMode) {
+            setCell(x, y, true);
+          } else {
+            setCell(x, y, false);
+          }
+          drawGrid();
+          updateStatusInfo();
+        }
+      } else if (e.touches.length === 2) {
+        // 两指触摸，处理平移和缩放
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        
+        // 计算两指中心点
+        const centerX = (touch1.clientX + touch2.clientX) / 2;
+        const centerY = (touch1.clientY + touch2.clientY) / 2;
+        
+        // 处理平移
+        offsetX += centerX - lastMouseX;
+        offsetY += centerY - lastMouseY;
+        lastMouseX = centerX;
+        lastMouseY = centerY;
+        
+        drawGrid();
+      }
+      e.preventDefault();
+    });
+    
+    canvas.addEventListener('touchend', (e) => {
+      if (e.touches.length === 0) {
+        isDragging = false;
+      }
+      e.preventDefault();
+    });
+    
+    // 更新状态信息
+    function updateStatusInfo() {
+      document.getElementById('population').textContent = `存活: ${grid.size}`;
+      document.getElementById('generation').textContent = `代数: ${generation}`;
+    }
+    
+    // 随机填充网格
+    function randomizeGrid() {
+      grid.clear();
+      
+      // 计算可见区域中的单元格
+      const startX = Math.floor(-offsetX / cellSize) - 5;
+      const startY = Math.floor(-offsetY / cellSize) - 5;
+      const endX = Math.ceil((canvas.width - offsetX) / cellSize) + 5;
+      const endY = Math.ceil((canvas.height - offsetY) / cellSize) + 5;
+      
+      for (let x = startX; x < endX; x++) {
+        for (let y = startY; y < endY; y++) {
+          if (Math.random() < 0.3) {
+            setCell(x, y, true);
+          }
+        }
+      }
+      
+      generation = 0;
+      updateStatusInfo();
+      drawGrid();
+    }
+    
+    // 清除网格
+    function clearGrid() {
+      grid.clear();
+      generation = 0;
+      updateStatusInfo();
+      drawGrid();
+    }
+    
+    // 游戏循环
+    let lastFrameTime = 0;
+    let frameInterval = 1000 / speed;
+    
+    function gameLoop(timestamp) {
+      if (isPlaying && timestamp - lastFrameTime >= frameInterval) {
+        nextGeneration();
+        drawGrid();
+        lastFrameTime = timestamp;
+      }
+      
+      requestAnimationFrame(gameLoop);
+    }
+    
+    // 启动游戏循环
+    requestAnimationFrame(gameLoop);
+    
+    // 界面控制
+    document.getElementById('playPause').addEventListener('click', () => {
+      isPlaying = !isPlaying;
+      document.getElementById('playPause').textContent = isPlaying ? '暂停' : '播放';
+    });
+    
+    document.getElementById('step').addEventListener('click', () => {
+      nextGeneration();
+      drawGrid();
+    });
+    
+    document.getElementById('clear').addEventListener('click', clearGrid);
+    
+    document.getElementById('random').addEventListener('click', randomizeGrid);
+    
+    document.getElementById('draw').addEventListener('click', () => {
+      drawMode = true;
+      document.getElementById('draw').classList.add('active');
+      document.getElementById('erase').classList.remove('active');
+    });
+    
+    document.getElementById('erase').addEventListener('click', () => {
+      drawMode = false;
+      document.getElementById('draw').classList.remove('active');
+      document.getElementById('erase').classList.add('active');
+    });
+    
+    document.getElementById('speed').addEventListener('input', (e) => {
+      speed = parseInt(e.target.value);
+      frameInterval = 1000 / speed;
+      document.getElementById('speedValue').textContent = `${speed} FPS`;
+    });
+    
+    document.getElementById('cellSize').addEventListener('input', (e) => {
+      cellSize = parseInt(e.target.value);
+      document.getElementById('cellSizeValue').textContent = `${cellSize}px`;
+      drawGrid();
+    });
+    
+    // 键盘控制
+    document.addEventListener('keydown', (e) => {
+      switch (e.key) {
+        case ' ': // 空格键切换播放/暂停
+          isPlaying = !isPlaying;
+          document.getElementById('playPause').textContent = isPlaying ? '暂停' : '播放';
+          break;
+        case 'c': // c 键清除
+          clearGrid();
+          break;
+        case 'r': // r 键随机填充
+          randomizeGrid();
+          break;
+        case 's': // s 键单步
+          if (!isPlaying) {
+            nextGeneration();
+            drawGrid();
+          }
+          break;
+        case 'd': // d 键切换为绘制模式
+          drawMode = true;
+          document.getElementById('draw').classList.add('active');
+          document.getElementById('erase').classList.remove('active');
+          break;
+        case 'e': // e 键切换为擦除模式
+          drawMode = false;
+          document.getElementById('draw').classList.remove('active');
+          document.getElementById('erase').classList.add('active');
+          break;
+        // 方向键控制平移
+        case 'ArrowLeft':
+          offsetX += cellSize * 5;
+          drawGrid();
+          break;
+        case 'ArrowRight':
+          offsetX -= cellSize * 5;
+          drawGrid();
+          break;
+        case 'ArrowUp':
+          offsetY += cellSize * 5;
+          drawGrid();
+          break;
+        case 'ArrowDown':
+          offsetY -= cellSize * 5;
+          drawGrid();
+          break;
+      }
+    });
+    
+    // 添加一些预设图案
+    function addGlider(x, y) {
+      setCell(x, y, true);
+      setCell(x + 1, y + 1, true);
+      setCell(x + 2, y + 1, true);
+      setCell(x + 2, y, true);
+      setCell(x + 1, y - 1, true);
+      drawGrid();
+      updateStatusInfo();
+    }
+    
+    // 初始化
+    drawGrid();
+    updateStatusInfo();
+    
+    // 添加一个滑翔机作为初始状态
+    addGlider(0, 0);
+  });
+</script>
+</body>
+</html>
