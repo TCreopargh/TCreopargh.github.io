@@ -686,24 +686,10 @@
           break;
       }
     });
-    
-    // 添加一些预设图案
-    function addGlider(x, y) {
-      setCell(x, y, true);
-      setCell(x + 1, y + 1, true);
-      setCell(x + 2, y + 1, true);
-      setCell(x + 2, y, true);
-      setCell(x + 1, y - 1, true);
-      drawGrid();
-      updateStatusInfo();
-    }
-    
     // 初始化
     drawGrid();
     updateStatusInfo();
-    
-    // 添加一个滑翔机作为初始状态
-    addGlider(0, 0);
+  
   });
 </script>
 </body>
