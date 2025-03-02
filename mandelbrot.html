@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>曼德博集合查看器</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #000;
+      font-family: Arial, sans-serif;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+    .controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background-color: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 10px;
+      border-radius: 5px;
+      z-index: 10;
+    }
+    .controls p {
+      margin: 5px 0;
+    }
+    .controls button {
+      margin: 5px 5px 5px 0;
+      padding: 5px 10px;
+      background-color: #444;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .controls button:hover {
+      background-color: #666;
+    }
+    .color-scheme {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="glCanvas"></canvas>
+  <div class="controls">
+    <h3>曼德博集合查看器</h3>
+    <p>鼠标滚轮：缩放</p>
+    <p>鼠标拖拽：平移</p>
+    <p>最大迭代次数: <span id="iterationDisplay">100</span></p>
+    <input type="range" id="iterationSlider" min="50" max="10000" value="100" step="10">
+    <div class="color-scheme">
+      <p>颜色方案:</p>
+      <button id="colorScheme1">经典</button>
+      <button id="colorScheme2">火焰</button>
+      <button id="colorScheme3">海洋</button>
+    </div>
+    <button id="resetView">重置视图</button>
+  </div>
+
+  <script>
+    // 初始化WebGL上下文
+    const canvas = document.getElementById('glCanvas');
+    const gl = canvas.getContext('webgl');
+    
+    if (!gl) {
+      alert('无法初始化WebGL，您的浏览器可能不支持。');
+      throw new Error('WebGL not supported');
+    }
+    
+    // 调整画布大小
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      gl.viewport(0, 0, canvas.width, canvas.height);
+    }
+    
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+    
+    // 创建着色器程序
+    function createShader(gl, type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        console.error('着色器编译错误:', gl.getShaderInfoLog(shader));
+        gl.deleteShader(shader);
+        return null;
+      }
+      
+      return shader;
+    }
+    
+    // 顶点着色器 - 简单地传递坐标
+    const vertexShaderSource = `
+      attribute vec4 aPosition;
+      void main() {
+        gl_Position = aPosition;
+      }
+    `;
+    
+    // 片段着色器 - 计算曼德博集合
+    const fragmentShaderSource = `
+      precision highp float;
+      
+      uniform vec2 uCenter;
+      uniform float uZoom;
+      uniform vec2 uResolution;
+      uniform int uMaxIterations;
+      uniform int uColorScheme;
+      
+      vec3 getColor1(float t) {
+        // 经典配色
+        return vec3(
+          0.5 + 0.5 * cos(3.0 + t * 0.15),
+          0.5 + 0.5 * cos(2.0 + t * 0.15),
+          0.5 + 0.5 * cos(1.0 + t * 0.15)
+        );
+      }
+      
+      vec3 getColor2(float t) {
+        // 火焰配色
+        return vec3(
+          0.5 + 0.5 * sin(t * 0.1),
+          0.5 * sin(t * 0.1) * sin(t * 0.1),
+          0.1 * sin(t * 0.1)
+        );
+      }
+      
+      vec3 getColor3(float t) {
+        // 海洋配色
+        return vec3(
+          0.1 * cos(t * 0.1),
+          0.2 + 0.5 * cos(t * 0.1),
+          0.5 + 0.5 * cos(t * 0.1)
+        );
+      }
+      
+      void main() {
+        // 将像素坐标转换为复平面坐标
+        vec2 uv = gl_FragCoord.xy / uResolution.xy;
+        float aspectRatio = uResolution.x / uResolution.y;
+        
+        // 调整坐标，考虑纵横比
+        vec2 c = uCenter + (uv * 2.0 - 1.0) * vec2(aspectRatio, 1.0) / uZoom;
+        
+        // 曼德博集合迭代
+        vec2 z = vec2(0.0);
+        int iterations = 0;
+        const int MAX_ITER = 10000; // 硬编码最大迭代次数，着色器不支持动态循环边界
+        
+        for (int i = 0; i < MAX_ITER; i++) {
+          if (i >= uMaxIterations) break;
+          
+          // z = z^2 + c
+          vec2 zSquared = vec2(
+            z.x * z.x - z.y * z.y,
+            2.0 * z.x * z.y
+          );
+          z = zSquared + c;
+          
+          // 检查是否发散
+          if (dot(z, z) > 4.0) {
+            iterations = i;
+            break;
+          }
+        }
+        
+        // 根据迭代次数着色
+        if (iterations == uMaxIterations) {
+          // 集合内部为黑色
+          gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+        } else {
+          // 平滑着色
+          float smoothColor = float(iterations) + 1.0 - log(log(length(z))) / log(2.0);
+          smoothColor = smoothColor / float(uMaxIterations);
+          
+          vec3 color;
+          if (uColorScheme == 1) {
+            color = getColor1(smoothColor * 20.0);
+          } else if (uColorScheme == 2) {
+            color = getColor2(smoothColor * 20.0);
+          } else {
+            color = getColor3(smoothColor * 20.0);
+          }
+          
+          gl_FragColor = vec4(color, 1.0);
+        }
+      }
+    `;
+    
+    // 创建着色器程序
+    const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+    const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+    
+    const program = gl.createProgram();
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, fragmentShader);
+    gl.linkProgram(program);
+    
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      console.error('着色器程序链接失败:', gl.getProgramInfoLog(program));
+      throw new Error('Shader program failed to link');
+    }
+    
+    gl.useProgram(program);
+    
+    // 创建顶点缓冲区（覆盖整个屏幕的两个三角形）
+    const positionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    
+    const positions = [
+      -1.0, -1.0,
+       1.0, -1.0,
+      -1.0,  1.0,
+      -1.0,  1.0,
+       1.0, -1.0,
+       1.0,  1.0
+    ];
+    
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+    
+    // 获取着色器中的属性位置
+    const positionAttributeLocation = gl.getAttribLocation(program, 'aPosition');
+    gl.enableVertexAttribArray(positionAttributeLocation);
+    gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+    
+    // 获取着色器中的uniform位置
+    const centerLocation = gl.getUniformLocation(program, 'uCenter');
+    const zoomLocation = gl.getUniformLocation(program, 'uZoom');
+    const resolutionLocation = gl.getUniformLocation(program, 'uResolution');
+    const maxIterationsLocation = gl.getUniformLocation(program, 'uMaxIterations');
+    const colorSchemeLocation = gl.getUniformLocation(program, 'uColorScheme');
+    
+    // 设置初始状态
+    let center = [-0.5, 0.0];
+    let zoom = 1.0;
+    let maxIterations = 100;
+    let colorScheme = 1;
+    let isDragging = false;
+    let lastMousePos = [0, 0];
+    
+    // 更新迭代次数显示
+    const iterationDisplay = document.getElementById('iterationDisplay');
+    const iterationSlider = document.getElementById('iterationSlider');
+    
+    iterationSlider.addEventListener('input', function() {
+      maxIterations = parseInt(this.value);
+      iterationDisplay.textContent = maxIterations;
+      render();
+    });
+    
+    // 颜色方案按钮
+    document.getElementById('colorScheme1').addEventListener('click', function() {
+      colorScheme = 1;
+      render();
+    });
+    
+    document.getElementById('colorScheme2').addEventListener('click', function() {
+      colorScheme = 2;
+      render();
+    });
+    
+    document.getElementById('colorScheme3').addEventListener('click', function() {
+      colorScheme = 3;
+      render();
+    });
+    
+    // 重置视图按钮
+    document.getElementById('resetView').addEventListener('click', function() {
+      center = [-0.5, 0.0];
+      zoom = 1.0;
+      render();
+    });
+    
+    // 鼠标事件处理
+    canvas.addEventListener('mousedown', function(e) {
+      isDragging = true;
+      lastMousePos = [e.clientX, e.clientY];
+    });
+    
+    canvas.addEventListener('mouseup', function() {
+      isDragging = false;
+    });
+    
+    canvas.addEventListener('mouseleave', function() {
+      isDragging = false;
+    });
+    
+    canvas.addEventListener('mousemove', function(e) {
+      if (isDragging) {
+        const dx = (e.clientX - lastMousePos[0]) / canvas.width;
+        const dy = (e.clientY - lastMousePos[1]) / canvas.height;
+        
+        // 根据当前缩放级别调整平移速度
+        center[0] -= dx * 2 / zoom;
+        center[1] += dy * 2 / zoom;
+        
+        lastMousePos = [e.clientX, e.clientY];
+        render();
+      }
+    });
+    
+    canvas.addEventListener('wheel', function(e) {
+      e.preventDefault();
+      
+      // 获取鼠标在画布上的位置
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      
+      // 将鼠标位置转换为复平面坐标
+      const aspectRatio = canvas.width / canvas.height;
+      const mouseComplex = [
+        center[0] + (2 * mouseX / canvas.width - 1) * aspectRatio / zoom,
+        center[1] - (2 * mouseY / canvas.height - 1) / zoom
+      ];
+      
+      // 缩放因子
+      const zoomFactor = e.deltaY > 0 ? 0.8 : 1.25;
+      zoom *= zoomFactor;
+      
+      // 调整中心点，使鼠标指向的点保持不变
+      center[0] = mouseComplex[0] - (mouseComplex[0] - center[0]) / zoomFactor;
+      center[1] = mouseComplex[1] - (mouseComplex[1] - center[1]) / zoomFactor;
+      
+      render();
+    });
+    
+    // 渲染函数
+    function render() {
+      // 设置uniform变量
+      gl.uniform2f(centerLocation, center[0], center[1]);
+      gl.uniform1f(zoomLocation, zoom);
+      gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
+      gl.uniform1i(maxIterationsLocation, maxIterations);
+      gl.uniform1i(colorSchemeLocation, colorScheme);
+      
+      // 绘制
+      gl.clearColor(0.0, 0.0, 0.0, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+    
+    // 初始渲染
+    render();
+  </script>
+</body>
+</html>
