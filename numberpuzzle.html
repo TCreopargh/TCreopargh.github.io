@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数字华容道拼图</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: "Microsoft YaHei", sans-serif;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background-color: #f5f5f5;
+      padding: 20px;
+      touch-action: none; /* 防止默认触摸行为干扰滑动操作 */
+    }
+    .container {
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      padding: 20px;
+      width: 100%;
+      max-width: 500px;
+      text-align: center;
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+    .controls {
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    select, button {
+      padding: 8px 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background-color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .game-board {
+      display: grid;
+      gap: 5px;
+      margin: 0 auto;
+      max-width: 400px;
+      width: 100%;
+      touch-action: none; /* 防止默认触摸行为干扰滑动操作 */
+    }
+    .tile {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #3498db;
+      color: white;
+      font-size: 24px;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 5px;
+      transition: transform 0.2s;
+      aspect-ratio: 1 / 1;
+      user-select: none;
+    }
+    .tile:hover:not(.empty) {
+      transform: scale(0.95);
+    }
+    .tile.empty {
+      background-color: transparent;
+      border: 2px dashed #ccc;
+      cursor: default;
+    }
+    .stats {
+      margin-top: 20px;
+      display: flex;
+      justify-content: space-around;
+    }
+    .stat {
+      font-size: 18px;
+    }
+    .win-message {
+      color: #4CAF50;
+      font-size: 24px;
+      font-weight: bold;
+      margin-top: 20px;
+      animation: pulse 1.5s infinite;
+      display: none;
+    }
+    .instructions {
+      margin-top: 20px;
+      color: #666;
+      font-size: 14px;
+      text-align: center;
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>数字华容道拼图</h1>
+    <div class="controls">
+      <select id="difficulty">
+        <option value="3">3 × 3</option>
+        <option value="4">4 × 4</option>
+        <option value="5">5 × 5</option>
+        <option value="6">6 × 6</option>
+      </select>
+      <button id="new-game-btn">新游戏</button>
+      <button id="shuffle-btn">重新打乱</button>
+    </div>
+    <div class="game-board" id="game-board"></div>
+    <div class="stats">
+      <div class="stat">步数: <span id="moves">0</span></div>
+      <div class="stat">时间: <span id="time">00:00</span></div>
+    </div>
+    <div class="win-message" id="win-message">恭喜你完成了拼图！</div>
+    <div class="instructions">
+      <p>电脑端：使用方向键移动方块 | 手机端：滑动屏幕移动方块</p>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const gameBoard = document.getElementById('game-board');
+      const difficultySelect = document.getElementById('difficulty');
+      const newGameBtn = document.getElementById('new-game-btn');
+      const shuffleBtn = document.getElementById('shuffle-btn');
+      const movesDisplay = document.getElementById('moves');
+      const timeDisplay = document.getElementById('time');
+      const winMessage = document.getElementById('win-message');
+
+      let size = 3; // 默认3×3
+      let tiles = [];
+      let emptyPos = { row: size - 1, col: size - 1 };
+      let moves = 0;
+      let seconds = 0;
+      let timerInterval = null;
+      let gameStarted = false;
+      
+      // 触摸事件相关变量
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let touchEndX = 0;
+      let touchEndY = 0;
+
+      // 初始化游戏
+      function initGame() {
+        // 清除之前的游戏状态
+        resetGame();
+        
+        // 获取当前选择的难度
+        size = parseInt(difficultySelect.value);
+        emptyPos = { row: size - 1, col: size - 1 };
+        
+        // 设置游戏板的网格
+        gameBoard.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+        
+        // 创建有序的瓦片
+        tiles = [];
+        for (let i = 0; i < size * size - 1; i++) {
+          tiles.push(i + 1);
+        }
+        tiles.push(0); // 0 表示空白瓦片
+        
+        // 渲染游戏板
+        renderBoard();
+        
+        // 打乱瓦片
+        shuffleTiles();
+        
+        // 自动开始游戏
+        startGame();
+      }
+
+      // 开始游戏
+      function startGame() {
+        gameStarted = true;
+        
+        // 启动计时器
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(updateTimer, 1000);
+      }
+
+      // 重置游戏状态
+      function resetGame() {
+        moves = 0;
+        seconds = 0;
+        movesDisplay.textContent = moves;
+        timeDisplay.textContent = '00:00';
+        winMessage.style.display = 'none';
+        
+        if (timerInterval) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+        }
+        
+        gameStarted = false;
+      }
+
+      // 渲染游戏板
+      function renderBoard() {
+        gameBoard.innerHTML = '';
+        
+        for (let i = 0; i < size; i++) {
+          for (let j = 0; j < size; j++) {
+            const index = i * size + j;
+            const tileValue = tiles[index];
+            
+            const tile = document.createElement('div');
+            tile.className = 'tile';
+            if (tileValue === 0) {
+              tile.classList.add('empty');
+            } else {
+              tile.textContent = tileValue;
+            }
+            
+            tile.addEventListener('click', () => {
+              if (!gameStarted) return;
+              
+              const tilePos = { row: Math.floor(index / size), col: index % size };
+              tryMove(tilePos);
+            });
+            
+            gameBoard.appendChild(tile);
+          }
+        }
+      }
+
+      // 打乱瓦片
+      function shuffleTiles() {
+        // 执行随机移动来打乱瓦片
+    
+        const moves = size * size + Math.floor(Math.random() * size * size * 30); // 足够多的随机移动
+        
+        for (let i = 0; i < moves; i++) {
+          const possibleMoves = [];
+          
+          // 检查上下左右四个方向是否可以移动
+          if (emptyPos.row > 0) possibleMoves.push({ row: emptyPos.row - 1, col: emptyPos.col }); // 上
+          if (emptyPos.row < size - 1) possibleMoves.push({ row: emptyPos.row + 1, col: emptyPos.col }); // 下
+          if (emptyPos.col > 0) possibleMoves.push({ row: emptyPos.row, col: emptyPos.col - 1 }); // 左
+          if (emptyPos.col < size - 1) possibleMoves.push({ row: emptyPos.row, col: emptyPos.col + 1 }); // 右
+          
+          // 随机选择一个移动方向
+          const randomMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+          
+          // 执行移动
+          swapTiles(randomMove, emptyPos);
+          emptyPos = randomMove;
+        }
+        
+        // 重新渲染游戏板
+        renderBoard();
+      }
+
+      // 尝试移动瓦片
+      function tryMove(tilePos) {
+        // 检查点击的瓦片是否与空白瓦片相邻
+        const isAdjacent = (
+          (Math.abs(tilePos.row - emptyPos.row) === 1 && tilePos.col === emptyPos.col) ||
+          (Math.abs(tilePos.col - emptyPos.col) === 1 && tilePos.row === emptyPos.row)
+        );
+        
+        if (isAdjacent) {
+          // 交换瓦片
+          swapTiles(tilePos, emptyPos);
+          
+          // 更新空白瓦片位置
+          emptyPos = tilePos;
+          
+          // 增加移动次数
+          moves++;
+          movesDisplay.textContent = moves;
+          
+          // 重新渲染游戏板
+          renderBoard();
+          
+          // 检查是否完成拼图
+          checkWin();
+        }
+      }
+
+      // 交换两个瓦片
+      function swapTiles(pos1, pos2) {
+        const index1 = pos1.row * size + pos1.col;
+        const index2 = pos2.row * size + pos2.col;
+        
+        const temp = tiles[index1];
+        tiles[index1] = tiles[index2];
+        tiles[index2] = temp;
+      }
+
+      // 检查是否完成拼图
+      function checkWin() {
+        let isWin = true;
+        
+        for (let i = 0; i < size * size - 1; i++) {
+          if (tiles[i] !== i + 1) {
+            isWin = false;
+            break;
+          }
+        }
+        
+        if (isWin && tiles[size * size - 1] === 0) {
+          // 游戏胜利
+          winMessage.style.display = 'block';
+          clearInterval(timerInterval);
+          gameStarted = false;
+        }
+      }
+
+      // 更新计时器
+      function updateTimer() {
+        seconds++;
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        timeDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+      }
+
+      // 处理方向键按下事件
+      function handleKeyDown(e) {
+        if (!gameStarted) return;
+        
+        let newRow = emptyPos.row;
+        let newCol = emptyPos.col;
+        
+        // 根据方向键确定要移动的瓦片位置
+        switch (e.key) {
+          case 'ArrowDown':
+            newRow = emptyPos.row + 1;
+            break;
+          case 'ArrowUp':
+            newRow = emptyPos.row - 1;
+            break;
+          case 'ArrowRight':
+            newCol = emptyPos.col + 1;
+            break;
+          case 'ArrowLeft':
+            newCol = emptyPos.col - 1;
+            break;
+          default:
+            return; // 不是方向键，直接返回
+        }
+        
+        // 检查新位置是否有效
+        if (newRow >= 0 && newRow < size && newCol >= 0 && newCol < size) {
+          tryMove({ row: newRow, col: newCol });
+        }
+        
+        // 防止方向键滚动页面
+        e.preventDefault();
+      }
+
+      // 处理触摸开始事件
+      function handleTouchStart(e) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        
+        // 防止默认行为（如滚动）
+        e.preventDefault();
+      }
+
+      // 处理触摸结束事件
+      function handleTouchEnd(e) {
+        if (!gameStarted) return;
+        
+        touchEndX = e.changedTouches[0].clientX;
+        touchEndY = e.changedTouches[0].clientY;
+        
+        // 计算水平和垂直方向的滑动距离
+        const deltaX = touchEndX - touchStartX;
+        const deltaY = touchEndY - touchStartY;
+        
+        // 确定主要滑动方向（水平或垂直）
+        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+          // 水平滑动
+          if (Math.abs(deltaX) > 30) { // 至少滑动30像素才触发
+            if (deltaX > 0) {
+              // 右滑，空白向左移
+              if (emptyPos.col > 0) {
+                tryMove({ row: emptyPos.row, col: emptyPos.col - 1 });
+              }
+            } else {
+              // 左滑，空白向右移
+              if (emptyPos.col < size - 1) {
+                tryMove({ row: emptyPos.row, col: emptyPos.col + 1 });
+              }
+            }
+          }
+        } else {
+          // 垂直滑动
+          if (Math.abs(deltaY) > 30) { // 至少滑动30像素才触发
+            if (deltaY > 0) {
+              // 下滑，空白向上移
+              if (emptyPos.row > 0) {
+                tryMove({ row: emptyPos.row - 1, col: emptyPos.col });
+              }
+            } else {
+              // 上滑，空白向下移
+              if (emptyPos.row < size - 1) {
+                tryMove({ row: emptyPos.row + 1, col: emptyPos.col });
+              }
+            }
+          }
+        }
+        
+        // 防止默认行为
+        e.preventDefault();
+      }
+
+      // 新游戏按钮点击事件
+      newGameBtn.addEventListener('click', initGame);
+
+      // 重新打乱按钮点击事件
+      shuffleBtn.addEventListener('click', () => {
+        if (!gameStarted) return;
+        
+        shuffleTiles();
+        moves = 0;
+        movesDisplay.textContent = moves;
+        winMessage.style.display = 'none';
+      });
+
+      // 难度选择变化事件
+      difficultySelect.addEventListener('change', initGame);
+
+      // 监听键盘事件（方向键）
+      document.addEventListener('keydown', handleKeyDown);
+
+      // 监听触摸事件（滑动）
+      gameBoard.addEventListener('touchstart', handleTouchStart, { passive: false });
+      gameBoard.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+      // 初始化游戏（自动开始）
+      initGame();
+    });
+  </script>
+</body>
+</html>
