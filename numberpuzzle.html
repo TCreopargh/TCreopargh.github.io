@@ -398,12 +398,12 @@
           if (Math.abs(deltaX) > 30) { // 至少滑动30像素才触发
             if (deltaX > 0) {
               // 右滑，空白向右移
-              if (emptyPos.col > 0) {
+              if (emptyPos.col < size - 1) {
                 tryMove({ row: emptyPos.row, col: emptyPos.col + 1 });
               }
             } else {
               // 左滑，空白向左移
-              if (emptyPos.col < size - 1) {
+              if (emptyPos.col > 0) {
                 tryMove({ row: emptyPos.row, col: emptyPos.col - 1 });
               }
             }
@@ -413,12 +413,12 @@
           if (Math.abs(deltaY) > 30) { // 至少滑动30像素才触发
             if (deltaY > 0) {
               // 下滑，空白向下移
-              if (emptyPos.row > 0) {
+              if (emptyPos.row < size - 1) {
                 tryMove({ row: emptyPos.row + 1, col: emptyPos.col });
               }
             } else {
               // 上滑，空白向上移
-              if (emptyPos.row < size - 1) {
+              if (emptyPos.row > 0) {
                 tryMove({ row: emptyPos.row - 1, col: emptyPos.col });
               }
             }
