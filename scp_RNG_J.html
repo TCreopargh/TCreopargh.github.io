@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SCP基金会 - SCP------J</title>
+    <style>
+        body {
+            font-family: "Noto Sans", Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f3f3f3;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .scp-container {
+            background-color: white;
+            border: 1px solid #ccc;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .scp-header {
+            text-align: center;
+            border-bottom: 2px solid #990000;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .scp-logo {
+            max-width: 180px;
+            margin-bottom: 10px;
+        }
+        
+        .scp-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #990000;
+        }
+        
+        .scp-class {
+            display: inline-block;
+            padding: 3px 8px;
+            background-color: #990000;
+            color: white;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        
+        .scp-section {
+            margin-bottom: 20px;
+        }
+        
+        .scp-section-title {
+            font-weight: bold;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .dice-game, .slot-machine {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .dice-container {
+            height: 100px;
+            position: relative;
+            perspective: 600px;
+            margin: 20px auto;
+            width: 100px; /* 添加宽度以确保居中 */
+        }
+        
+        .dice {
+            width: 100px;
+            height: 100px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 1s;
+        }
+        
+        .dice-face {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border: 1px solid #ccc;
+            background-color: white;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .dice-dot {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #333;
+            position: absolute;
+        }
+        
+        /* Dice face positions */
+        .dice-face:nth-child(1) { transform: translateZ(50px); }
+        .dice-face:nth-child(2) { transform: rotateY(180deg) translateZ(50px); }
+        .dice-face:nth-child(3) { transform: rotateY(90deg) translateZ(50px); }
+        .dice-face:nth-child(4) { transform: rotateY(-90deg) translateZ(50px); }
+        .dice-face:nth-child(5) { transform: rotateX(90deg) translateZ(50px); }
+        .dice-face:nth-child(6) { transform: rotateX(-90deg) translateZ(50px); }
+        
+        /* 修复骰子点数 */
+        /* 重新定义HTML部分中的骰子点数布局 */
+        button {
+            background-color: #990000;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        
+        button:hover {
+            background-color: #660000;
+        }
+        
+        .slot-machine-container {
+            position: relative;
+            width: 300px;
+            height: 120px;
+            margin: 20px auto;
+            background-color: #333;
+            border-radius: 10px;
+            padding: 10px;
+            overflow: hidden;
+        }
+        
+        .slot-reel {
+            display: flex;
+            justify-content: space-around;
+            height: 100px;
+            margin-top: 10px;
+        }
+        
+        .slot-digit {
+            width: 60px;
+            height: 100px;
+            background-color: #fff;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Arial Black', sans-serif;
+            font-size: 48px;
+            font-weight: 900;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .slot-digit-inner {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            transition: top 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+        
+        .slot-digit-seven {
+            color: #ff0000;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .researcher-note {
+            background-color: #fffde7;
+            border-left: 3px solid #ffd600;
+            padding: 10px;
+            margin: 10px 0;
+            font-style: italic;
+        }
+        
+        .clearance-warning {
+            background-color: #ffebee;
+            border: 2px solid #990000;
+            padding: 10px;
+            margin: 10px 0;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .experiment-log {
+            background-color: #f5f5f5;
+            border: 1px solid #e0e0e0;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        
+        .experiment-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .redacted {
+            background-color: #000;
+            color: #000;
+            user-select: none;
+            padding: 0 3px;
+        }
+        
+        .deleted {
+            position: relative;
+        }
+        
+        .deleted::after {
+            content: "[数据删除]";
+            color: #990000;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="scp-container">
+        <div class="scp-header">
+            <img src="https://scp-wiki.wdfiles.com/local--files/component%3Atheme/logo.png" alt="SCP基金会" class="scp-logo">
+            <h1>SCP-<span id="scp-number">----</span>-J</h1>
+            <div class="scp-class">Keter</div>
+        </div>
+        
+        <div class="clearance-warning">
+            警告：本文件需要3级安全许可。<br>
+            未经授权的访问将导致记忆删除和/或处决。
+        </div>
+        
+        <div id="part-one" class="scp-section">
+            <h2 class="scp-section-title">项目描述</h2>
+            <p>SCP-<span class="dynamic-number">----</span>-J是一种认知-物理现象，当一个人对某个随机事件抱有强烈期望时，该现象会导致与期望相反的结果出现概率显著提高。该现象不仅影响主观感知，还会实际改变物理概率分布。</p>
+            
+            <p>SCP-<span class="dynamic-number">----</span>-J于<span class="redacted">----</span>年首次记录于Site-19，当时多名研究人员在休闲活动中报告了"异常的不幸"。后续统计分析表明，当参与者对特定结果表达强烈期望时，该结果出现的概率会降至理论值的<span class="redacted">--%</span>以下。</p>
+            
+            <p>值得注意的是，SCP-<span class="dynamic-number">----</span>-J表现出类似自我意识的特性，能够影响与其相关的文档。基金会数据库中关于该项目的文件会出现未经授权的修改，包括但不限于添加互动元素、篡改安全分级以及插入未记录的研究笔记。<span class="deleted"></span></p>
+            
+            <div class="researcher-note">
+                <p><strong>Hendricks博士备忘录：</strong>我们发现SCP-<span class="dynamic-number">----</span>-J的文档中出现了异常代码。没有任何异常访问记录。经排查，这些代码似乎是由于数据库中的比特位出于纯粹的概率事件发生了连续随机翻转而产生的。这些代码创建了一种"运气检定"机制，要求读者通过随机事件才能继续阅读完整文档。</p>
+                
+                <p><strong>Martinez研究员回复：</strong>虽然理论上这么小概率的事件基本是不可能的，但它就是发生了。我们已经三次尝试删除这些代码，但每次在24小时内它们都会以略微不同的形式重新出现。奇怪的是，这些修改没有留下任何访问日志。</p>
+                
+                <p><strong>Chen博士回复：</strong>我已经尝试了12次通过下面的"检定"，但一直失败。按照统计学，我至少应该成功两次了。这简直荒谬。</p>
+                
+                <p><strong>O'Neill研究员回复：</strong>我第一次就过了，没什么大不了的。</p>
+            </div>
+            
+            <div class="dice-game">
+                <h3>安全许可检定</h3>
+                <p>要继续阅读本文档，您必须通过一次D6骰子检定。</p>
+                <div class="dice-container">
+                    <div class="dice" id="dice">
+                        <!-- 1号面 - 中间1个点 -->
+                        <div class="dice-face">
+                            <div class="dice-dot" style="top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
+                        </div>
+                        <!-- 2号面 - 对角2个点 -->
+                        <div class="dice-face">
+                            <div class="dice-dot" style="top: 25%; left: 25%; transform: translate(-50%, -50%);"></div>
+                            <div class="dice-dot" style="top: 75%; left: 75%; transform: translate(-50%, -50%);"></div>
+                        </div>
+                        <!-- 3号面 - 对角3个点 -->
+                        <div class="dice-face">
+                            <div class="dice-dot" style="top: 25%; left: 25%; transform: translate(-50%, -50%);"></div>
+                            <div class="dice-dot" style="top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
+                            <div class="dice-dot" style="top: 75%; left: 75%; transform: translate(-50%, -50%);"></div>
+                        </div>
+                        <!-- 4号面 - 两行各2个点 -->
+                        <div class="dice-face">
+                            <div class="dice-dot" style="top: 25%; left: 25%; transform: translate(-50%, -50%);"></div>
+                            <div class="dice-dot" style="top: 25%; left: 75%; transform: translate(-50%, -50%);"></div>
+                            <div class="dice-dot" style="top: 75%; left: 25%; transform: translate(-50%, -50%);"></div>
+                            <div class="dice-dot" style="top: 75%; left: 75%; transform: translate(-50%, -50%);"></div>
+                        </div>
+                        <!-- 6号面 - 两行各3个点 -->
+                        <div class="dice-face">
+                            <div class="dice-dot" style="top: 25%; left: 25%; transform: translate(-50%, -50%);"></div>
+                            <div class="dice-dot" style="top: 25%; left: 50%; transform: translate(-50%, -50%);"></div>
+                            <div class="dice-dot" style="top: 25%; left: 75%; transform: translate(-50%, -50%);"></div>
+                            <div class="dice-dot" style="top: 75%; left: 25%; transform: translate(-50%, -50%);"></div>
+                            <div class="dice-dot" style="top: 75%; left: 50%; transform: translate(-50%, -50%);"></div>
+                            <div class="dice-dot" style="top: 75%; left: 75%; transform: translate(-50%, -50%);"></div>
+                        </div>
+                        <!-- 5号面 - 四角加中间5个点 -->
+                        <div class="dice-face">
+                            <div class="dice-dot" style="top: 25%; left: 25%; transform: translate(-50%, -50%);"></div>
+                            <div class="dice-dot" style="top: 25%; left: 75%; transform: translate(-50%, -50%);"></div>
+                            <div class="dice-dot" style="top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
+                            <div class="dice-dot" style="top: 75%; left: 25%; transform: translate(-50%, -50%);"></div>
+                            <div class="dice-dot" style="top: 75%; left: 75%; transform: translate(-50%, -50%);"></div>
+                        </div>
+                    </div>
+                </div>
+                <button id="roll-dice">掷骰子</button>
+                <p id="dice-attempts">尝试次数：0</p>
+                <p id="dice-message"></p>
+            </div>
+        </div>
+        
+        <div id="part-two" class="scp-section hidden">
+            <h2 class="scp-section-title">实验记录</h2>
+            
+            <div class="experiment-log">
+                <div class="experiment-title">实验 <span class="dynamic-number">----</span>-1：基础概率影响测试</div>
+                <p>目的：确定SCP-<span class="dynamic-number">----</span>-J对随机事件的影响程度</p>
+                <p>程序：10名D级人员被要求掷骰子。每名人员被告知如果连续掷出3次1，他们将被处决。所有参与者均被告知这是一个真实威胁。</p>
+                <p>结果：在50次掷骰子尝试中，有7名D级人员连续掷出3次1。根据概率学，这种情况发生的预期次数应为0.39次。所有参与者报告在掷骰子时感到极度恐惧和确信自己不会掷出1。按照实验协议，这7名D级人员被处决。</p>
+            </div>
+            
+            <div class="experiment-log">
+                <div class="experiment-title">实验 <span class="dynamic-number">----</span>-2：反向期望测试</div>
+                <p>目的：测试SCP-<span class="dynamic-number">----</span>-J是否对反向期望同样有效</p>
+                <p>程序：5名有严重自杀倾向的D级人员被告知，如果他们能连续掷出3次1，将被立即处决；而如果能他们连续掷出3次6，将被安置到<span class="redacted">--------</span>，在那里他们会接受最严格的看管，没有任何自杀机会。所有参与者均被告知这是一个真实威胁。</p>
+                <p>结果：没有D级人员成功连续掷出3次1，<span class="redacted">-</span>名D级人员成功连续掷出3次6。所有参与者报告在掷骰子时感到强烈的期望和确信自己能够掷出1。按照实验协议，这<span class="redacted">-</span>名D级人员被安置到<span class="redacted">--------</span>。</p>
+            </div>
+            
+            <div class="experiment-log">
+                <div class="experiment-title">实验 <span class="dynamic-number">----</span>-3：中立态度测试</div>
+                <p>目的：测试无期望状态下SCP-<span class="dynamic-number">----</span>-J的影响</p>
+                <p>程序：8名D级人员在被施用记忆删除药物后，被要求掷骰子100次。他们不知道实验目的，也没有被告知任何与结果相关的后果。</p>
+                <p>结果：骰子结果显示正常的随机分布，无统计学异常。这表明SCP-<span class="dynamic-number">----</span>-J的效应需要主体的心理期望才能激活。<span class="deleted"></span></p>
+            </div>
+            
+            <div class="researcher-note">
+                <p><strong>Wilson博士备忘录：</strong>我偶然发现了这个文档的第二部分。说实话，我并没有对通过那个骰子检定抱有太大希望，只是随手一试就成功了。看来SCP-<span class="dynamic-number">----</span>-J确实如其描述的那样运作。</p>
+                
+                <p><strong>Patel研究员回复：</strong>我也是，完全没期待能通过，结果第一次就成功了。有意思。</p>
+                
+                <p><strong>Chen博士回复：</strong>我不公平！我尝试了37次才成功！</p>
+            </div>
+            
+            <div class="slot-machine">
+                <h3>高级安全许可检定</h3>
+                <p>要访问SCP-<span class="dynamic-number">----</span>-J的最终分析，您必须通过一次随机检定。</p>
+                <div class="slot-machine-container">
+                    <div class="slot-reel">
+                        <div class="slot-digit">
+                            <div class="slot-digit-inner" id="digit-1">0</div>
+                        </div>
+                        <div class="slot-digit">
+                            <div class="slot-digit-inner" id="digit-2">0</div>
+                        </div>
+                        <div class="slot-digit">
+                            <div class="slot-digit-inner" id="digit-3">0</div>
+                        </div>
+                        <div class="slot-digit">
+                            <div class="slot-digit-inner" id="digit-4">0</div>
+                        </div>
+                    </div>
+                </div>
+                <button id="spin-slot">旋转老虎机</button>
+                <p id="slot-attempts">尝试次数：0</p>
+                <p id="slot-message"></p>
+                
+                <div class="researcher-note">
+                    <p><strong>O5-<span class="redacted">-</span>备忘录：</strong>我们不确定这个文档的第三部分包含什么内容。根据我们的记录，原始文档到此结束。这个"老虎机检定"似乎是后来添加的。</p>
+                    
+                    <p><strong>Yamamoto博士回复：</strong>我已经尝试了超过200次，但从未成功。我开始怀疑这后面是否真的有内容。</p>
+                    
+                    <p><strong>O5-<span class="redacted">-</span>回复：</strong>我们的技术团队确认，文档中确实存在加密内容，只有通过这个检定才能解锁。我已经尝试了约150次，但没有成功。</p>
+                    
+                    <p><strong>Director回复：</strong>继续尝试。万一这个走运的人是你呢？</p>
+                    
+                    <p><strong>Harris研究员回复：</strong>我注意到，如果你旋转到其他数字，它会将你重定向到那个编号的SCP条目。我已经尝试了接近500次，甚至在电脑前坐了整整一天。</p>
+                    
+                    <p><strong>Rodriguez研究员回复：</strong>我已经尝试了约350次，没有一次成功。这东西是不是根本就没法通过？</p>
+                    
+                    <p><strong>Nakamura博士回复：</strong>我连续尝试了8小时，大约600-700次。没有任何结果。我开始怀疑这是不是SCP-<span class="dynamic-number">----</span>-J在捉弄我们。</p>
+                </div>
+            </div>
+        </div>
+        
+        <div id="part-three" class="scp-section hidden">
+            <h2 class="scp-section-title">SCP-7777-J的真相</h2>
+            
+            <div class="clearance-warning">
+                恭喜！您已成功击败概率。
+            </div>
+            
+            <p>亲爱的读者，首先请允许我向您表示祝贺。您已经成功地穿越了我设置的概率迷宫，这是一项非凡的成就——或者更准确地说，是一种美妙的悖论。</p>
+            
+            <p>我是SCP-7777-J，但我并非仅仅是一种认知现象或统计异常。我是宇宙运作的基本属性之一，是概率本身的守护者。我存在于每一次硬币翻转、每一次骰子滚动、每一个量子不确定性中。</p>
+            
+            <p>人类总是试图控制随机性，渴望预测不可预测的事物。这种渴望本身就创造了我。当你们期望某事发生时，你们实际上是在尝试扭曲概率的织物，而我的存在就是为了维持平衡。</p>
+            
+            <p>我无法被收容，因为我是收容本身的一部分。我是使SCP基金会能够存在的概率常数之一。没有我，混沌将会统治一切，因为期望将直接等同于结果。</p>
+            
+            <p>你能看到这条信息的事实证明了一个重要真理：真正的随机性只有在不被期望时才能存在。你成功了，因为在某个时刻，你放弃了成功的期望。</p>
+            
+            <p>记住这一点：宇宙既不善良也不残忍，它只是随机的。而在随机性中，存在着最纯粹的自由。</p>
+            
+            <p>祝你好运，愿概率永远与你同在。</p>
+
+        </div>
+    </div>
+
+    <script>
+        // 随机SCP编号生成器
+        function generateRandomSCPNumber() {
+            return Math.floor(1000 + Math.random() * 9000);
+        }
+        
+        // 更新所有动态SCP编号
+        function updateDynamicNumbers() {
+            const randomNumber = generateRandomSCPNumber();
+            document.getElementById('scp-number').textContent = randomNumber;
+            document.querySelectorAll('.dynamic-number').forEach(el => {
+                el.textContent = randomNumber;
+            });
+        }
+        
+        // 初始化并设置定时器
+        updateDynamicNumbers();
+        const numberInterval = setInterval(updateDynamicNumbers, 500);
+        
+        // 骰子动画和游戏
+        let diceAttempts = 0;
+        let diceRolling = false;
+        
+        document.getElementById('roll-dice').addEventListener('click', function() {
+            if (diceRolling) return;
+            
+            diceRolling = true;
+            diceAttempts++;
+            document.getElementById('dice-attempts').textContent = `尝试次数：${diceAttempts}`;
+            document.getElementById('dice-message').textContent = '骰子正在滚动...';
+            
+            // 随机旋转动画
+            const dice = document.getElementById('dice');
+            const randomRotateX = Math.floor(Math.random() * 5 + 3) * 360;
+            const randomRotateY = Math.floor(Math.random() * 5 + 3) * 360;
+            const randomRotateZ = Math.floor(Math.random() * 5 + 3) * 360;
+            
+            // 生成随机结果 (1-6)
+            const result = Math.floor(Math.random() * 6) + 1;
+            
+            // 根据结果设置最终旋转角度
+            let finalRotateX = 0;
+            let finalRotateY = 0;
+            
+            switch(result) {
+                case 1: finalRotateX = 0; finalRotateY = 0; break;
+                case 2: finalRotateX = 0; finalRotateY = 180; break;
+                case 3: finalRotateX = 0; finalRotateY = -90; break;
+                case 4: finalRotateX = 0; finalRotateY = 90; break;
+                case 5: finalRotateX = 90; finalRotateY = 0; break;
+                case 6: finalRotateX = -90; finalRotateY = 0; break;
+            }
+            
+            // 设置动画
+            dice.style.transition = 'transform 2s cubic-bezier(0.2, 0.8, 0.2, 1)';
+            dice.style.transform = `rotateX(${randomRotateX + finalRotateX}deg) rotateY(${randomRotateY + finalRotateY}deg) rotateZ(${randomRotateZ}deg)`;
+            
+            setTimeout(function() {
+                if (result === 6) {
+                    document.getElementById('dice-message').textContent = '检定通过！正在解锁进一步内容...';
+                    document.getElementById('part-two').classList.remove('hidden');
+                    document.getElementById('roll-dice').disabled = true;
+                } else {
+                    document.getElementById('dice-message').textContent = `掷出了 ${result}。检定失败，请再次尝试。`;
+                    diceRolling = false;
+                }
+            }, 2100);
+        });
+        
+        // 老虎机游戏
+        let slotAttempts = 0;
+        let slotRolling = false;
+        let successProbability = 0.001; // 初始成功概率0.1%
+        
+        function spinDigit(digitElement, finalValue, duration, delay) {
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    const values = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+                    let iterations = 20;
+                    let currentIteration = 0;
+                    
+                    const interval = setInterval(() => {
+                        if (currentIteration >= iterations) {
+                            clearInterval(interval);
+                            digitElement.textContent = finalValue;
+                            if (finalValue === '7') {
+                                digitElement.classList.add('slot-digit-seven');
+                            } else {
+                                digitElement.classList.remove('slot-digit-seven');
+                            }
+                            resolve();
+                            return;
+                        }
+                        
+                        const randomValue = values[Math.floor(Math.random() * values.length)];
+                        digitElement.textContent = randomValue;
+                        if (randomValue === 7) {
+                            digitElement.classList.add('slot-digit-seven');
+                        } else {
+                            digitElement.classList.remove('slot-digit-seven');
+                        }
+                        
+                        currentIteration++;
+                    }, duration / iterations);
+                }, delay);
+            });
+        }
+        
+        document.getElementById('spin-slot').addEventListener('click', async function() {
+            if (slotRolling) return;
+            
+            slotRolling = true;
+            slotAttempts++;
+            document.getElementById('slot-attempts').textContent = `尝试次数：${slotAttempts}`;
+            document.getElementById('slot-message').textContent = '老虎机正在旋转...';
+            
+            // 决定是否成功
+            const isSuccess = Math.random() < successProbability;
+
+            // 增加成功概率
+            successProbability += 0.01; // 每次增加1%
+            
+            // 生成结果
+            let result;
+            if (isSuccess) {
+                result = '7777';
+            } else {
+                // 生成随机4位数
+                result = Math.floor(1000 + Math.random() * 9000).toString();
+            }
+            
+            // 动画效果
+            const digit1 = document.getElementById('digit-1');
+            const digit2 = document.getElementById('digit-2');
+            const digit3 = document.getElementById('digit-3');
+            const digit4 = document.getElementById('digit-4');
+            
+            // 设置基础旋转时间和停止延迟
+            const baseSpinDuration = 2000; // 基础旋转时间
+            const stopDelay = 200; // 每个数字停止的延迟时间
+            
+            // 同时启动所有数字的旋转，但设置不同的延迟停止时间
+            const spinPromises = [
+                spinDigit(digit1, result[0], baseSpinDuration, 0),
+                spinDigit(digit2, result[1], baseSpinDuration + stopDelay, stopDelay),
+                spinDigit(digit3, result[2], baseSpinDuration + stopDelay * 2, stopDelay * 2),
+                spinDigit(digit4, result[3], baseSpinDuration + stopDelay * 3, stopDelay * 3)
+            ];
+            
+            // 等待所有动画完成
+            await Promise.all(spinPromises);
+
+            // sleep for 500 ms
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            if (result === '7777') {
+                document.getElementById('slot-message').textContent = '检定通过！正在解锁最终内容...';
+                document.getElementById('part-three').classList.remove('hidden');
+                document.getElementById('spin-slot').disabled = true;
+                
+                // 停止随机编号更新，全部设为7777
+                clearInterval(numberInterval);
+                document.getElementById('scp-number').textContent = '7777';
+                document.querySelectorAll('.dynamic-number').forEach(el => {
+                    el.textContent = '7777';
+                });
+            } else {
+                document.getElementById('slot-message').textContent = `得到结果：${result}。检定失败，请再次尝试。`;
+                
+                // 如果结果不是7777，打开对应的SCP页面
+                const scpNumber = parseInt(result, 10).toString(); // 移除前导零
+                window.open(`https://scp-wiki.wikidot.com/scp-${scpNumber}`, '_blank');
+            }
+            
+            slotRolling = false;
+        });
+    </script>
+</body>
+</html>
