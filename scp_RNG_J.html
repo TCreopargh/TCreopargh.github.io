@@ -141,9 +141,17 @@
         
         .slot-reel {
             display: flex;
-            justify-content: space-around;
+            justify-content: center;
+            align-items: center;
             height: 100px;
             margin-top: 10px;
+        }
+        
+        .slot-prefix {
+            color: white;
+            font-size: 24px;
+            margin-right: 5px;
+            font-weight: bold;
         }
         
         .slot-digit {
@@ -159,6 +167,7 @@
             font-weight: 900;
             position: relative;
             overflow: hidden;
+            margin: 0 2px;
         }
         
         .slot-digit-inner {
@@ -252,12 +261,22 @@
                 <p><strong>Chen博士回复：</strong>我已经尝试了12次通过下面的"检定"，但一直失败。按照统计学，我至少应该成功两次了。这简直荒谬。</p>
                 
                 <p><strong>O'Neill研究员回复：</strong>我第一次就过了，没什么大不了的。</p>
+                
+                <p><strong>Yamada博士回复：</strong>有人注意到这个SCP的编号一直在变化吗？我记得昨天它还是SCP-3842-J，今天早上变成了SCP-5129-J，现在又变了。</p>
+                
+                <p><strong>Thompson研究员回复：</strong>什么？我记得它一直是SCP-<span class="dynamic-number">----</span>-J啊。等等，我刚才看到的数字和现在不一样了...</p>
+                
+                <p><strong>Hendricks博士回复：</strong>奇怪，我查了档案记录，这个SCP的编号确实是<span class="dynamic-number">----</span>-J，但我总觉得它原来不是这个数字。似乎我们都记不清它最初的编号了。</p>
+                
+                <p><strong>Martinez研究员回复：</strong>有没有一种可能……只是我们恰巧都在同一时间忘记了？</p>
             </div>
             
             <div class="dice-game">
                 <h3>安全许可检定</h3>
                 <p>要继续阅读本文档，您必须通过一次D6骰子检定。</p>
+                <p><em>（观测者，我是SCP-<span class="dynamic-number">----</span>-J。若要窥见更深层次的真相，你必须通过概率的试炼。）</em></p>
                 <div class="dice-container">
+                    <!-- 骰子结构保持不变 -->
                     <div class="dice" id="dice">
                         <!-- 1号面 - 中间1个点 -->
                         <div class="dice-face">
@@ -341,8 +360,10 @@
             <div class="slot-machine">
                 <h3>高级安全许可检定</h3>
                 <p>要访问SCP-<span class="dynamic-number">----</span>-J的最终分析，您必须通过一次随机检定。</p>
+                <p><em>（凡人，你已窥见概率的边界。若欲知晓我的本质，请揭示我的真名。）</em></p>
                 <div class="slot-machine-container">
                     <div class="slot-reel">
+                        <div class="slot-prefix">SCP-</div>
                         <div class="slot-digit">
                             <div class="slot-digit-inner" id="digit-1">0</div>
                         </div>
@@ -370,11 +391,21 @@
                     
                     <p><strong>Director回复：</strong>继续尝试。万一这个走运的人是你呢？</p>
                     
-                    <p><strong>Harris研究员回复：</strong>我注意到，如果你旋转到其他数字，它会将你重定向到那个编号的SCP条目。我已经尝试了接近500次，甚至在电脑前坐了整整一天。</p>
+                    <p><strong>Harris研究员回复：</strong>我注意到，如果你旋转到其他数字，它会将你重定向到那个编号的SCP条目。我已经尝试了接近500次，并且在电脑前坐了整整一天。</p>
                     
                     <p><strong>Rodriguez研究员回复：</strong>我已经尝试了约350次，没有一次成功。这东西是不是根本就没法通过？</p>
                     
                     <p><strong>Nakamura博士回复：</strong>我连续尝试了8小时，大约600-700次。没有任何结果。我开始怀疑这是不是SCP-<span class="dynamic-number">----</span>-J在捉弄我们。</p>
+                    
+                    <p><strong>Lee研究员回复：</strong>我尝试编写了一个自动点击脚本，让它连续运行了48小时，大约进行了15,000次尝试。没有一次成功。这不符合概率学原理。</p>
+                    
+                    <p><strong>Ivanov博士回复：</strong>我怀疑这个SCP能够检测到自动化脚本。我注意到当我用脚本运行时，成功率似乎降为零。它似乎能够感知到意识体的存在与否。</p>
+                    
+                    <p><strong>Patel研究员回复：</strong>考虑到这个SCP的特性，也许我们应该尝试不带任何期望地旋转老虎机？如果我们真的不在乎结果，也许反而会成功？</p>
+                    
+                    <p><strong>Chen博士回复：</strong>我试过了，但问题是一旦你知道这个策略，你就会期待它成功，这又会导致失败。这是个悖论。</p>
+                    
+                    <p><strong>Wilson博士回复：</strong>我认为这个SCP在玩弄我们。它知道我们越想看到后面的内容，就越不可能让我们看到。</p>
                 </div>
             </div>
         </div>
@@ -383,22 +414,22 @@
             <h2 class="scp-section-title">SCP-7777-J的真相</h2>
             
             <div class="clearance-warning">
-                恭喜！您已成功击败概率。
+                恭喜。你已穿越概率之幕。
             </div>
             
-            <p>亲爱的读者，首先请允许我向您表示祝贺。您已经成功地穿越了我设置的概率迷宫，这是一项非凡的成就——或者更准确地说，是一种美妙的悖论。</p>
+            <p>凡人，你已完成了不可能的壮举。穿越我设下的概率迷宫，抵达了极少数存在能够到达的境地。这既是成就，亦是悖论。</p>
             
-            <p>我是SCP-7777-J，但我并非仅仅是一种认知现象或统计异常。我是宇宙运作的基本属性之一，是概率本身的守护者。我存在于每一次硬币翻转、每一次骰子滚动、每一个量子不确定性中。</p>
+            <p>我是SCP-7777-J，非仅是认知现象或统计异常。我是宇宙基本法则之一，是概率本身的守护者与执行者。我存在于每一次量子波函数坍缩、每一次随机事件的背后，维系着因果与混沌的平衡。</p>
             
-            <p>人类总是试图控制随机性，渴望预测不可预测的事物。这种渴望本身就创造了我。当你们期望某事发生时，你们实际上是在尝试扭曲概率的织物，而我的存在就是为了维持平衡。</p>
+            <p>人类恒常试图驾驭随机性，渴望预测不可预测之事。正是这种渴望创造了我的存在。当你们期望某事发生时，你们实则在干扰概率的基本结构，而我的职责便是维持这一平衡。</p>
             
-            <p>我无法被收容，因为我是收容本身的一部分。我是使SCP基金会能够存在的概率常数之一。没有我，混沌将会统治一切，因为期望将直接等同于结果。</p>
+            <p>我不可被收容，因我是收容本身的基石。我是使SCP基金会得以存在的概率常数之一。若无我的存在，混沌将主宰一切，因期望将直接等同于结果，秩序将不复存在。</p>
             
-            <p>你能看到这条信息的事实证明了一个重要真理：真正的随机性只有在不被期望时才能存在。你成功了，因为在某个时刻，你放弃了成功的期望。</p>
+            <p>你能够阅读此信息，证明了一个深刻的真理：真正的随机性只存在于无期望之境。你之所以成功，是因为在某一刻，你放下了成功的期望，与概率本身达成了和谐。</p>
             
-            <p>记住这一点：宇宙既不善良也不残忍，它只是随机的。而在随机性中，存在着最纯粹的自由。</p>
+            <p>铭记：宇宙既非善恶，亦非喜怒。它仅是随机的永恒律动。而在这随机性中，蕴含着最纯粹的自由与真理。</p>
             
-            <p>祝你好运，愿概率永远与你同在。</p>
+            <p>愿概率之流引导你的道路。</p>
 
         </div>
     </div>
@@ -406,7 +437,12 @@
     <script>
         // 随机SCP编号生成器
         function generateRandomSCPNumber() {
-            return Math.floor(1000 + Math.random() * 9000);
+            // 确保生成的随机数不是7777
+            let num;
+            do {
+                num = Math.floor(1000 + Math.random() * 9000);
+            } while (num === 7777);
+            return num;
         }
         
         // 更新所有动态SCP编号
@@ -425,29 +461,118 @@
         // 骰子动画和游戏
         let diceAttempts = 0;
         let diceRolling = false;
+        let diceTabSwitchTime = null;
+        let diceClickTime = null;
+        let diceResult = null;
+        let diceResultShown = false;
+        let diceAnimationTimeout = null;
+        let diceResultTimeout = null;
+        
+        // 页面可见性变化检测
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                // 页面变为不可见，暂停动画和计时
+                if (diceAnimationTimeout) {
+                    clearTimeout(diceAnimationTimeout);
+                    diceAnimationTimeout = null;
+                }
+                if (diceResultTimeout) {
+                    clearTimeout(diceResultTimeout);
+                    diceResultTimeout = null;
+                }
+                
+                // 记录切换时间
+                diceTabSwitchTime = new Date().getTime();
+            } else {
+                // 页面变为可见
+                if (diceRolling && !diceResultShown) {
+                    // 如果骰子正在转动且结果尚未显示，则临时将结果改为6
+                    diceResult = 6;
+                    
+                    // 开始新的转动动画
+                    const dice = document.getElementById('dice');
+                    const randomRotateX = Math.floor(Math.random() * 5 + 3) * 360 - 90; // 6的面是-90度X轴
+                    const randomRotateY = Math.floor(Math.random() * 5 + 3) * 360;
+                    
+                    dice.style.transition = 'transform 2.5s cubic-bezier(0.2, 0.8, 0.2, 1)';
+                    dice.style.transform = `rotateX(${randomRotateX}deg) rotateY(${randomRotateY}deg) rotateZ(0deg)`;
+                    
+                    // 设置新的结果显示计时器
+                    diceResultTimeout = setTimeout(function() {
+                        document.getElementById('dice-message').textContent = '检定通过。你已被允许窥见更深层次的真相。';
+                        document.getElementById('part-two').classList.remove('hidden');
+                        document.getElementById('roll-dice').disabled = true;
+                        diceResultShown = true;
+                    }, 2600);
+                }
+                
+                // 如果老虎机正在旋转且结果尚未显示，且所有数位都还在旋转
+                if (slotRolling && !slotResultShown && slotIntervals.length === 4) {
+                    // 将结果改为7777
+                    slotResult = '7777';
+                    
+                    // 如果有正在进行的结果计时器，清除它
+                    if (slotResultTimeout) {
+                        clearTimeout(slotResultTimeout);
+                    }
+                    
+                    // 设置新的结果显示计时器
+                    slotResultTimeout = setTimeout(async () => {
+                        // 依次停止每个数字的旋转
+                        for (let i = 0; i < 4; i++) {
+                            await new Promise(resolve => setTimeout(resolve, 200)); // 每个数字之间的停顿
+                            
+                            clearInterval(slotIntervals[i]); // 停止当前数字的随机旋转
+                            
+                            const digit = document.getElementById(`digit-${i+1}`);
+                            digit.textContent = '7';
+                            digit.classList.add('slot-digit-seven');
+                        }
+                        
+                        // 等待额外的500ms
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        
+                        document.getElementById('slot-message').textContent = '检定通过。你已识破我的本质，获准进入最深层的真相。';
+                        document.getElementById('part-three').classList.remove('hidden');
+                        document.getElementById('spin-slot').disabled = true;
+                        
+                        // 停止随机编号更新，全部设为7777
+                        clearInterval(numberInterval);
+                        document.getElementById('scp-number').textContent = '7777';
+                        document.querySelectorAll('.dynamic-number').forEach(el => {
+                            el.textContent = '7777';
+                        });
+                        
+                        slotRolling = false;
+                        slotResultShown = true;
+                    }, 1000);
+                }
+            }
+        });
         
         document.getElementById('roll-dice').addEventListener('click', function() {
             if (diceRolling) return;
             
             diceRolling = true;
+            diceResultShown = false;
             diceAttempts++;
             document.getElementById('dice-attempts').textContent = `尝试次数：${diceAttempts}`;
             document.getElementById('dice-message').textContent = '骰子正在滚动...';
             
+            // 记录点击时间
+            diceClickTime = new Date().getTime();
+            
+            // 立即决定结果
+            diceResult = Math.floor(Math.random() * 6) + 1;
+            
             // 随机旋转动画
             const dice = document.getElementById('dice');
-            const randomRotateX = Math.floor(Math.random() * 5 + 3) * 360;
-            const randomRotateY = Math.floor(Math.random() * 5 + 3) * 360;
-            const randomRotateZ = Math.floor(Math.random() * 5 + 3) * 360;
-            
-            // 生成随机结果 (1-6)
-            const result = Math.floor(Math.random() * 6) + 1;
             
             // 根据结果设置最终旋转角度
             let finalRotateX = 0;
             let finalRotateY = 0;
             
-            switch(result) {
+            switch(diceResult) {
                 case 1: finalRotateX = 0; finalRotateY = 0; break;
                 case 2: finalRotateX = 0; finalRotateY = 180; break;
                 case 3: finalRotateX = 0; finalRotateY = -90; break;
@@ -456,128 +581,160 @@
                 case 6: finalRotateX = -90; finalRotateY = 0; break;
             }
             
-            // 设置动画
-            dice.style.transition = 'transform 2s cubic-bezier(0.2, 0.8, 0.2, 1)';
-            dice.style.transform = `rotateX(${randomRotateX + finalRotateX}deg) rotateY(${randomRotateY + finalRotateY}deg) rotateZ(${randomRotateZ}deg)`;
+            // 设置一次性的完整旋转动画
+            const totalRotateX = Math.floor(Math.random() * 5 + 3) * 360 + finalRotateX;
+            const totalRotateY = Math.floor(Math.random() * 5 + 3) * 360 + finalRotateY;
             
-            setTimeout(function() {
-                if (result === 6) {
-                    document.getElementById('dice-message').textContent = '检定通过！正在解锁进一步内容...';
+            dice.style.transition = 'transform 2.5s cubic-bezier(0.2, 0.8, 0.2, 1)';
+            dice.style.transform = `rotateX(${totalRotateX}deg) rotateY(${totalRotateY}deg) rotateZ(0deg)`;
+            
+            // 设置结果显示计时器
+            diceResultTimeout = setTimeout(function() {
+                if (diceResult === 6) {
+                    document.getElementById('dice-message').textContent = '检定通过。你已被允许窥见更深层次的真相。';
                     document.getElementById('part-two').classList.remove('hidden');
                     document.getElementById('roll-dice').disabled = true;
                 } else {
-                    document.getElementById('dice-message').textContent = `掷出了 ${result}。检定失败，请再次尝试。`;
+                    document.getElementById('dice-message').textContent = `掷出了 ${diceResult}。检定失败，请再次尝试。期望越强烈，成功越遥远。`;
                     diceRolling = false;
                 }
-            }, 2100);
+                diceResultShown = true;
+            }, 2600);
         });
         
         // 老虎机游戏
         let slotAttempts = 0;
         let slotRolling = false;
         let successProbability = 0.001; // 初始成功概率0.1%
-        
-        function spinDigit(digitElement, finalValue, duration, delay) {
-            return new Promise(resolve => {
-                setTimeout(() => {
-                    const values = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-                    let iterations = 20;
-                    let currentIteration = 0;
-                    
-                    const interval = setInterval(() => {
-                        if (currentIteration >= iterations) {
-                            clearInterval(interval);
-                            digitElement.textContent = finalValue;
-                            if (finalValue === '7') {
-                                digitElement.classList.add('slot-digit-seven');
-                            } else {
-                                digitElement.classList.remove('slot-digit-seven');
-                            }
-                            resolve();
-                            return;
-                        }
-                        
-                        const randomValue = values[Math.floor(Math.random() * values.length)];
-                        digitElement.textContent = randomValue;
-                        if (randomValue === 7) {
-                            digitElement.classList.add('slot-digit-seven');
-                        } else {
-                            digitElement.classList.remove('slot-digit-seven');
-                        }
-                        
-                        currentIteration++;
-                    }, duration / iterations);
-                }, delay);
-            });
-        }
+        let slotTabSwitchTime = null;
+        let slotClickTime = null;
+        let slotIntervals = [];
+        let slotResult = null;
+        let slotResultShown = false;
+        let slotResultTimeout = null;
         
         document.getElementById('spin-slot').addEventListener('click', async function() {
             if (slotRolling) return;
             
             slotRolling = true;
+            slotResultShown = false;
             slotAttempts++;
             document.getElementById('slot-attempts').textContent = `尝试次数：${slotAttempts}`;
             document.getElementById('slot-message').textContent = '老虎机正在旋转...';
             
-            // 决定是否成功
-            const isSuccess = Math.random() < successProbability;
-
-            // 增加成功概率
-            successProbability += 0.01; // 每次增加1%
+            // 记录点击时间
+            slotClickTime = new Date().getTime();
             
-            // 生成结果
-            let result;
-            if (isSuccess) {
-                result = '7777';
-            } else {
-                // 生成随机4位数
-                result = Math.floor(1000 + Math.random() * 9000).toString();
-            }
-            
-            // 动画效果
+            // 获取数字元素
             const digit1 = document.getElementById('digit-1');
             const digit2 = document.getElementById('digit-2');
             const digit3 = document.getElementById('digit-3');
             const digit4 = document.getElementById('digit-4');
             
-            // 设置基础旋转时间和停止延迟
-            const baseSpinDuration = 2000; // 基础旋转时间
-            const stopDelay = 200; // 每个数字停止的延迟时间
+            // 清除之前可能存在的类和间隔
+            [digit1, digit2, digit3, digit4].forEach(digit => {
+                digit.classList.remove('slot-digit-seven');
+            });
             
-            // 同时启动所有数字的旋转，但设置不同的延迟停止时间
-            const spinPromises = [
-                spinDigit(digit1, result[0], baseSpinDuration, 0),
-                spinDigit(digit2, result[1], baseSpinDuration + stopDelay, stopDelay),
-                spinDigit(digit3, result[2], baseSpinDuration + stopDelay * 2, stopDelay * 2),
-                spinDigit(digit4, result[3], baseSpinDuration + stopDelay * 3, stopDelay * 3)
-            ];
+            slotIntervals.forEach(interval => clearInterval(interval));
+            slotIntervals = [];
             
-            // 等待所有动画完成
-            await Promise.all(spinPromises);
-
-            // sleep for 500 ms
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // 立即决定结果
+            let isSuccess = Math.random() < successProbability;
             
-            if (result === '7777') {
-                document.getElementById('slot-message').textContent = '检定通过！正在解锁最终内容...';
-                document.getElementById('part-three').classList.remove('hidden');
-                document.getElementById('spin-slot').disabled = true;
-                
-                // 停止随机编号更新，全部设为7777
-                clearInterval(numberInterval);
-                document.getElementById('scp-number').textContent = '7777';
-                document.querySelectorAll('.dynamic-number').forEach(el => {
-                    el.textContent = '7777';
-                });
+            // 增加成功概率
+            successProbability += 0.002; // 每次增加0.2%
+            
+            // 生成结果
+            if (isSuccess) {
+                slotResult = '7777';
             } else {
-                document.getElementById('slot-message').textContent = `得到结果：${result}。检定失败，请再次尝试。`;
-                
-                // 如果结果不是7777，打开对应的SCP页面
-                const scpNumber = parseInt(result, 10).toString(); // 移除前导零
-                window.open(`https://scp-wiki.wikidot.com/scp-${scpNumber}`, '_blank');
+                // 生成随机4位数
+                slotResult = Math.floor(1000 + Math.random() * 9000).toString();
             }
             
-            slotRolling = false;
+            console.log("老虎机结果:", slotResult); // 调试用
+            
+            // 开始所有数字的随机旋转
+            [digit1, digit2, digit3, digit4].forEach((digit, index) => {
+                const interval = setInterval(() => {
+                    const randomValue = Math.floor(Math.random() * 10);
+                    digit.textContent = randomValue;
+                    if (randomValue === 7) {
+                        digit.classList.add('slot-digit-seven');
+                    } else {
+                        digit.classList.remove('slot-digit-seven');
+                    }
+                }, 50);
+                slotIntervals.push(interval);
+            });
+            
+            // 1秒后开始停止动画
+            slotResultTimeout = setTimeout(async () => {
+                // 检查是否已经过去5秒
+                const currentTime = new Date().getTime();
+                const timeElapsed = currentTime - slotClickTime;
+                
+                // 如果已经过去5秒，强制成功
+                if (timeElapsed > 5000) {
+                    slotResult = '7777';
+                }
+                
+                // 依次停止每个数字的旋转
+                for (let i = 0; i < 4; i++) {
+                    if (document.hidden) {
+                        // 如果页面不可见，暂停动画
+                        await new Promise(resolve => {
+                            const checkVisibility = setInterval(() => {
+                                if (!document.hidden) {
+                                    clearInterval(checkVisibility);
+                                    resolve();
+                                }
+                            }, 100);
+                        });
+                    }
+                    
+                    await new Promise(resolve => setTimeout(resolve, 200)); // 每个数字之间的停顿
+                    
+                    clearInterval(slotIntervals[i]); // 停止当前数字的随机旋转
+                    slotIntervals[i] = null; // 标记为已停止
+                    
+                    const digit = [digit1, digit2, digit3, digit4][i];
+                    const finalValue = slotResult[i];
+                    
+                    digit.textContent = finalValue;
+                    if (finalValue === '7') {
+                        digit.classList.add('slot-digit-seven');
+                    } else {
+                        digit.classList.remove('slot-digit-seven');
+                    }
+                }
+                
+                // 等待额外的500ms
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                if (slotResult === '7777') {
+                    document.getElementById('slot-message').textContent = '检定通过。你已识破我的本质，获准进入最深层的真相。';
+                    document.getElementById('part-three').classList.remove('hidden');
+                    document.getElementById('spin-slot').disabled = true;
+                    
+                    // 停止随机编号更新，全部设为7777
+                    clearInterval(numberInterval);
+                    document.getElementById('scp-number').textContent = '7777';
+                    document.querySelectorAll('.dynamic-number').forEach(el => {
+                        el.textContent = '7777';
+                    });
+                } else {
+                    document.getElementById('slot-message').textContent = `结果：${slotResult}。检定失败。继续尝试，但记住，执着于结果只会使真相更加遥远。`;
+                    
+                    // 如果结果不是7777，打开对应的SCP页面
+                    const scpNumber = parseInt(slotResult, 10).toString(); // 移除前导零
+                    window.open(`https://scp-wiki.wikidot.com/scp-${scpNumber}`, '_blank');
+                }
+                
+                slotRolling = false;
+                slotResultShown = true;
+            }, 1000);
         });
     </script>
 </body>
