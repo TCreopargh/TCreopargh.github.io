@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SCP基金会 - SCP------J</title>
+    <title>SCP基金会 - SCP-RNG-J</title>
     <style>
         /* 在样式部分添加等宽字体样式 */
         .dynamic-number, #scp-number {
@@ -462,6 +462,7 @@
             document.querySelectorAll('.dynamic-number').forEach(el => {
                 el.textContent = randomNumber;
             });
+            document.title = `SCP基金会 - SCP-${randomNumber}-J`;
         }
         
         // 初始化并设置定时器
