@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SCP基金会 - SCP------J</title>
     <style>
+        /* 在样式部分添加等宽字体样式 */
+        .dynamic-number, #scp-number {
+            font-family: 'Consolas', monospace;
+            display: inline-block;
+            min-width: 4ch; /* 确保宽度固定，足够显示4位数字 */
+            text-align: center;
+        }
+        
+        /* 其他样式保持不变 */
         body {
             font-family: "Noto Sans", Arial, sans-serif;
             max-width: 800px;
