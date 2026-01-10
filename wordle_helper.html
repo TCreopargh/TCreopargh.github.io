@@ -213,6 +213,7 @@
         font-size: 24px;
         line-height: 1.6;
         word-break: break-all;
+        white-space: pre-wrap;
     }
     
     .copy-all-btn {
@@ -406,7 +407,8 @@
         const copyBtn = document.createElement('button');
         copyBtn.className = 'copy-btn';
         copyBtn.textContent = 'Copy';
-        copyBtn.onclick = () => copyToClipboard(emojiString, copyBtn);
+        const textToCopy = guess.split('').join(' ') + ' ' + emojiString;
+        copyBtn.onclick = () => copyToClipboard(textToCopy, copyBtn);
         
         emojiRow.appendChild(emojiDisplay);
         emojiRow.appendChild(copyBtn);
