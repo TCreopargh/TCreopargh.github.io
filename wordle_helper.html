@@ -1,320 +1,475 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wordle Helper</title>
-  <style>
-      * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-      }
-      
-      body {
-          font-family: 'Clear Sans', 'Helvetica Neue', Arial, sans-serif;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          min-height: 100vh;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          padding: 20px;
-      }
-      
-      .container {
-          background: white;
-          padding: 40px;
-          border-radius: 16px;
-          box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-          max-width: 500px;
-          width: 100%;
-      }
-      
-      h1 {
-          text-align: center;
-          color: #333;
-          margin-bottom: 30px;
-          font-size: 32px;
-      }
-      
-      .section {
-          margin-bottom: 30px;
-      }
-      
-      label {
-          display: block;
-          margin-bottom: 10px;
-          color: #555;
-          font-weight: 600;
-          font-size: 14px;
-          text-transform: uppercase;
-      }
-      
-      input[type="text"] {
-          width: 100%;
-          padding: 15px;
-          font-size: 20px;
-          text-transform: uppercase;
-          border: 2px solid #d3d6da;
-          border-radius: 8px;
-          font-weight: bold;
-          letter-spacing: 4px;
-          text-align: center;
-      }
-      
-      input[type="text"]:focus {
-          outline: none;
-          border-color: #667eea;
-      }
-      
-      button {
-          width: 100%;
-          padding: 15px;
-          background: #6aaa64;
-          color: white;
-          border: none;
-          border-radius: 8px;
-          font-size: 16px;
-          font-weight: bold;
-          cursor: pointer;
-          text-transform: uppercase;
-          transition: background 0.3s;
-      }
-      
-      button:hover {
-          background: #5a9a54;
-      }
-      
-      button:disabled {
-          background: #d3d6da;
-          cursor: not-allowed;
-      }
-      
-      .guess-section {
-          display: none;
-      }
-      
-      .guess-section.active {
-          display: block;
-      }
-      
-      .guesses-list {
-          margin-top: 20px;
-      }
-      
-      .guess-row {
-          display: flex;
-          gap: 8px;
-          margin-bottom: 12px;
-          justify-content: center;
-      }
-      
-      .letter-box {
-          width: 50px;
-          height: 50px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 24px;
-          font-weight: bold;
-          color: white;
-          border-radius: 4px;
-          text-transform: uppercase;
-          animation: flip 0.5s ease;
-      }
-      
-      .letter-box.correct {
-          background: #6aaa64;
-      }
-      
-      .letter-box.present {
-          background: #c9b458;
-      }
-      
-      .letter-box.absent {
-          background: #787c7e;
-      }
-      
-      @keyframes flip {
-          0% {
-              transform: rotateX(0);
-          }
-          50% {
-              transform: rotateX(90deg);
-          }
-          100% {
-              transform: rotateX(0);
-          }
-      }
-      
-      .reset-btn {
-          background: #787c7e;
-          margin-top: 20px;
-      }
-      
-      .reset-btn:hover {
-          background: #5a5c5e;
-      }
-      
-      .message {
-          text-align: center;
-          margin-top: 15px;
-          padding: 10px;
-          border-radius: 6px;
-          font-weight: 600;
-      }
-      
-      .message.error {
-          background: #ffe0e0;
-          color: #c00;
-      }
-      
-      .message.success {
-          background: #e0ffe0;
-          color: #0a0;
-      }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wordle Helper</title>
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    
+    body {
+        font-family: 'Clear Sans', 'Helvetica Neue', Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 20px;
+    }
+    
+    .container {
+        background: white;
+        padding: 40px;
+        border-radius: 16px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        max-width: 500px;
+        width: 100%;
+    }
+    
+    h1 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 30px;
+        font-size: 32px;
+    }
+    
+    .section {
+        margin-bottom: 30px;
+    }
+    
+    label {
+        display: block;
+        margin-bottom: 10px;
+        color: #555;
+        font-weight: 600;
+        font-size: 14px;
+        text-transform: uppercase;
+    }
+    
+    input[type="text"] {
+        width: 100%;
+        padding: 15px;
+        font-size: 20px;
+        text-transform: uppercase;
+        border: 2px solid #d3d6da;
+        border-radius: 8px;
+        font-weight: bold;
+        letter-spacing: 4px;
+        text-align: center;
+    }
+    
+    input[type="text"]:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+    
+    button {
+        width: 100%;
+        padding: 15px;
+        background: #6aaa64;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        text-transform: uppercase;
+        transition: background 0.3s;
+    }
+    
+    button:hover {
+        background: #5a9a54;
+    }
+    
+    button:disabled {
+        background: #d3d6da;
+        cursor: not-allowed;
+    }
+    
+    .guess-section {
+        display: none;
+    }
+    
+    .guess-section.active {
+        display: block;
+    }
+    
+    .guesses-list {
+        margin-top: 20px;
+    }
+    
+    .guess-item {
+        margin-bottom: 20px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+    
+    .guess-row {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+        justify-content: center;
+    }
+    
+    .letter-box {
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        font-weight: bold;
+        color: white;
+        border-radius: 4px;
+        text-transform: uppercase;
+        animation: flip 0.5s ease;
+    }
+    
+    .letter-box.correct {
+        background: #6aaa64;
+    }
+    
+    .letter-box.present {
+        background: #c9b458;
+    }
+    
+    .letter-box.absent {
+        background: #787c7e;
+    }
+    
+    @keyframes flip {
+        0% {
+            transform: rotateX(0);
+        }
+        50% {
+            transform: rotateX(90deg);
+        }
+        100% {
+            transform: rotateX(0);
+        }
+    }
+    
+    .emoji-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 10px;
+        padding: 10px;
+        background: white;
+        border-radius: 6px;
+        border: 1px solid #d3d6da;
+    }
+    
+    .emoji-display {
+        font-size: 24px;
+        letter-spacing: 2px;
+        flex: 1;
+    }
+    
+    .copy-btn {
+        padding: 8px 16px;
+        background: #667eea;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: bold;
+        cursor: pointer;
+        text-transform: uppercase;
+        transition: background 0.3s;
+        width: auto;
+    }
+    
+    .copy-btn:hover {
+        background: #5568d3;
+    }
+    
+    .copy-btn.copied {
+        background: #6aaa64;
+    }
+    
+    .emoji-summary {
+        margin-top: 20px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 2px dashed #d3d6da;
+    }
+    
+    .emoji-summary-title {
+        font-weight: 600;
+        color: #555;
+        margin-bottom: 10px;
+        font-size: 14px;
+        text-transform: uppercase;
+    }
+    
+    .emoji-summary-content {
+        font-size: 24px;
+        line-height: 1.6;
+        word-break: break-all;
+    }
+    
+    .copy-all-btn {
+        margin-top: 10px;
+        background: #667eea;
+    }
+    
+    .copy-all-btn:hover {
+        background: #5568d3;
+    }
+    
+    .reset-btn {
+        background: #787c7e;
+        margin-top: 20px;
+    }
+    
+    .reset-btn:hover {
+        background: #5a5c5e;
+    }
+    
+    .message {
+        text-align: center;
+        margin-top: 15px;
+        padding: 10px;
+        border-radius: 6px;
+        font-weight: 600;
+    }
+    
+    .message.error {
+        background: #ffe0e0;
+        color: #c00;
+    }
+    
+    .message.success {
+        background: #e0ffe0;
+        color: #0a0;
+    }
+</style>
 </head>
 <body>
-  <div class="container">
-      <h1>🟩 Wordle Helper</h1>
-      
-      <div class="section answer-section">
-          <label for="answer">Set the Answer (5 letters)</label>
-          <input type="text" id="answer" maxlength="5" placeholder="CRANE">
-          <button id="setAnswer">Set Answer</button>
-      </div>
-      
-      <div class="section guess-section">
-          <label for="guess">Make a Guess (5 letters)</label>
-          <input type="text" id="guess" maxlength="5" placeholder="SLATE">
-          <button id="makeGuess">Submit Guess</button>
-          
-          <div class="guesses-list" id="guessesList"></div>
-          
-          <button class="reset-btn" id="reset">Reset Game</button>
-      </div>
-      
-      <div id="message"></div>
-  </div>
-  
-  <script>
-      let answer = '';
-      const answerInput = document.getElementById('answer');
-      const setAnswerBtn = document.getElementById('setAnswer');
-      const guessInput = document.getElementById('guess');
-      const makeGuessBtn = document.getElementById('makeGuess');
-      const guessesList = document.getElementById('guessesList');
-      const resetBtn = document.getElementById('reset');
-      const messageDiv = document.getElementById('message');
-      const answerSection = document.querySelector('.answer-section');
-      const guessSection = document.querySelector('.guess-section');
-      
-      function showMessage(text, type) {
-          messageDiv.textContent = text;
-          messageDiv.className = `message ${type}`;
-          setTimeout(() => {
-              messageDiv.textContent = '';
-              messageDiv.className = 'message';
-          }, 3000);
-      }
-      
-      function isValidWord(word) {
-          return word.length === 5 && /^[a-zA-Z]+$/.test(word);
-      }
-      
-      setAnswerBtn.addEventListener('click', () => {
-          const input = answerInput.value.trim().toUpperCase();
-          if (!isValidWord(input)) {
-              showMessage('Please enter a valid 5-letter word', 'error');
-              return;
-          }
-          answer = input;
-          answerSection.style.display = 'none';
-          guessSection.classList.add('active');
-          showMessage('Answer set! Start guessing.', 'success');
-      });
-      
-      makeGuessBtn.addEventListener('click', () => {
-          const guess = guessInput.value.trim().toUpperCase();
-          if (!isValidWord(guess)) {
-              showMessage('Please enter a valid 5-letter word', 'error');
-              return;
-          }
-          
-          displayGuess(guess);
-          guessInput.value = '';
-          
-          if (guess === answer) {
-              showMessage('🎉 Correct! You got it!', 'success');
-              makeGuessBtn.disabled = true;
-              guessInput.disabled = true;
-          }
-      });
-      
-      function displayGuess(guess) {
-          const row = document.createElement('div');
-          row.className = 'guess-row';
-          
-          const answerLetters = answer.split('');
-          const guessLetters = guess.split('');
-          const letterStatus = new Array(5).fill('absent');
-          const answerUsed = new Array(5).fill(false);
-          
-          // First pass: mark correct letters
-          for (let i = 0; i < 5; i++) {
-              if (guessLetters[i] === answerLetters[i]) {
-                  letterStatus[i] = 'correct';
-                  answerUsed[i] = true;
-              }
-          }
-          
-          // Second pass: mark present letters
-          for (let i = 0; i < 5; i++) {
-              if (letterStatus[i] === 'absent') {
-                  for (let j = 0; j < 5; j++) {
-                      if (!answerUsed[j] && guessLetters[i] === answerLetters[j]) {
-                          letterStatus[i] = 'present';
-                          answerUsed[j] = true;
-                          break;
-                      }
-                  }
-              }
-          }
-          
-          // Create letter boxes
-          for (let i = 0; i < 5; i++) {
-              const box = document.createElement('div');
-              box.className = `letter-box ${letterStatus[i]}`;
-              box.textContent = guessLetters[i];
-              box.style.animationDelay = `${i * 0.1}s`;
-              row.appendChild(box);
-          }
-          
-          guessesList.appendChild(row);
-      }
-      
-      resetBtn.addEventListener('click', () => {
-          answer = '';
-          answerInput.value = '';
-          guessInput.value = '';
-          guessesList.innerHTML = '';
-          answerSection.style.display = 'block';
-          guessSection.classList.remove('active');
-          makeGuessBtn.disabled = false;
-          guessInput.disabled = false;
-          messageDiv.textContent = '';
-          messageDiv.className = 'message';
-      });
-      
-      // Allow Enter key to submit
-      answerInput.addEventListener('keypress', (e) => {
-          if (e.key === 'Enter') setAnswerBtn.click();
-      });
-      
-      guessInput.addEventListener('keypress', (e) => {
-          if (e.key === 'Enter') makeGuessBtn.click();
-      });
-  </script>
+<div class="container">
+    <h1>🟩 Wordle Helper</h1>
+    
+    <div class="section answer-section">
+        <label for="answer">Set the Answer (5 letters)</label>
+        <input type="text" id="answer" maxlength="5" placeholder="CRANE">
+        <button id="setAnswer">Set Answer</button>
+    </div>
+    
+    <div class="section guess-section">
+        <label for="guess">Make a Guess (5 letters)</label>
+        <input type="text" id="guess" maxlength="5" placeholder="SLATE">
+        <button id="makeGuess">Submit Guess</button>
+        
+        <div class="guesses-list" id="guessesList"></div>
+        
+        <div class="emoji-summary" id="emojiSummary" style="display: none;">
+            <div class="emoji-summary-title">All Guesses (Copy to Share)</div>
+            <div class="emoji-summary-content" id="emojiSummaryContent"></div>
+            <button class="copy-all-btn" id="copyAll">Copy All</button>
+        </div>
+        
+        <button class="reset-btn" id="reset">Reset Game</button>
+    </div>
+    
+    <div id="message"></div>
+</div>
+
+<script>
+    let answer = '';
+    let allEmojis = [];
+    const answerInput = document.getElementById('answer');
+    const setAnswerBtn = document.getElementById('setAnswer');
+    const guessInput = document.getElementById('guess');
+    const makeGuessBtn = document.getElementById('makeGuess');
+    const guessesList = document.getElementById('guessesList');
+    const resetBtn = document.getElementById('reset');
+    const messageDiv = document.getElementById('message');
+    const answerSection = document.querySelector('.answer-section');
+    const guessSection = document.querySelector('.guess-section');
+    const emojiSummary = document.getElementById('emojiSummary');
+    const emojiSummaryContent = document.getElementById('emojiSummaryContent');
+    const copyAllBtn = document.getElementById('copyAll');
+    
+    function showMessage(text, type) {
+        messageDiv.textContent = text;
+        messageDiv.className = `message ${type}`;
+        setTimeout(() => {
+            messageDiv.textContent = '';
+            messageDiv.className = 'message';
+        }, 3000);
+    }
+    
+    function isValidWord(word) {
+        return word.length === 5 && /^[a-zA-Z]+$/.test(word);
+    }
+    
+    setAnswerBtn.addEventListener('click', () => {
+        const input = answerInput.value.trim().toUpperCase();
+        if (!isValidWord(input)) {
+            showMessage('Please enter a valid 5-letter word', 'error');
+            return;
+        }
+        answer = input;
+        answerSection.style.display = 'none';
+        guessSection.classList.add('active');
+        showMessage('Answer set! Start guessing.', 'success');
+    });
+    
+    makeGuessBtn.addEventListener('click', () => {
+        const guess = guessInput.value.trim().toUpperCase();
+        if (!isValidWord(guess)) {
+            showMessage('Please enter a valid 5-letter word', 'error');
+            return;
+        }
+        
+        displayGuess(guess);
+        guessInput.value = '';
+        
+        if (guess === answer) {
+            showMessage('🎉 Correct! You got it!', 'success');
+            makeGuessBtn.disabled = true;
+            guessInput.disabled = true;
+        }
+    });
+    
+    function getEmojiForStatus(status) {
+        switch(status) {
+            case 'correct': return '🟩';
+            case 'present': return '🟨';
+            case 'absent': return '⬜';
+            default: return '⬜';
+        }
+    }
+    
+    function displayGuess(guess) {
+        const guessItem = document.createElement('div');
+        guessItem.className = 'guess-item';
+        
+        const row = document.createElement('div');
+        row.className = 'guess-row';
+        
+        const answerLetters = answer.split('');
+        const guessLetters = guess.split('');
+        const letterStatus = new Array(5).fill('absent');
+        const answerUsed = new Array(5).fill(false);
+        
+        // First pass: mark correct letters
+        for (let i = 0; i < 5; i++) {
+            if (guessLetters[i] === answerLetters[i]) {
+                letterStatus[i] = 'correct';
+                answerUsed[i] = true;
+            }
+        }
+        
+        // Second pass: mark present letters
+        for (let i = 0; i < 5; i++) {
+            if (letterStatus[i] === 'absent') {
+                for (let j = 0; j < 5; j++) {
+                    if (!answerUsed[j] && guessLetters[i] === answerLetters[j]) {
+                        letterStatus[i] = 'present';
+                        answerUsed[j] = true;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Create letter boxes
+        let emojiString = '';
+        for (let i = 0; i < 5; i++) {
+            const box = document.createElement('div');
+            box.className = `letter-box ${letterStatus[i]}`;
+            box.textContent = guessLetters[i];
+            box.style.animationDelay = `${i * 0.1}s`;
+            row.appendChild(box);
+            
+            emojiString += getEmojiForStatus(letterStatus[i]);
+        }
+        
+        guessItem.appendChild(row);
+        
+        // Create emoji row
+        const emojiRow = document.createElement('div');
+        emojiRow.className = 'emoji-row';
+        
+        const emojiDisplay = document.createElement('div');
+        emojiDisplay.className = 'emoji-display';
+        emojiDisplay.textContent = emojiString;
+        
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'copy-btn';
+        copyBtn.textContent = 'Copy';
+        copyBtn.onclick = () => copyToClipboard(emojiString, copyBtn);
+        
+        emojiRow.appendChild(emojiDisplay);
+        emojiRow.appendChild(copyBtn);
+        guessItem.appendChild(emojiRow);
+        
+        guessesList.appendChild(guessItem);
+        
+        // Add to all emojis array
+        allEmojis.push(emojiString);
+        updateEmojiSummary();
+    }
+    
+    function updateEmojiSummary() {
+        if (allEmojis.length > 0) {
+            emojiSummary.style.display = 'block';
+            emojiSummaryContent.textContent = allEmojis.join('\n');
+        }
+    }
+    
+    function copyToClipboard(text, button) {
+        navigator.clipboard.writeText(text).then(() => {
+            const originalText = button.textContent;
+            button.textContent = '✓ Copied!';
+            button.classList.add('copied');
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.classList.remove('copied');
+            }, 2000);
+            showMessage('Copied to clipboard!', 'success');
+        }).catch(() => {
+            showMessage('Failed to copy', 'error');
+        });
+    }
+    
+    copyAllBtn.addEventListener('click', () => {
+        const allText = allEmojis.join('\n');
+        copyToClipboard(allText, copyAllBtn);
+    });
+    
+    resetBtn.addEventListener('click', () => {
+        answer = '';
+        allEmojis = [];
+        answerInput.value = '';
+        guessInput.value = '';
+        guessesList.innerHTML = '';
+        emojiSummary.style.display = 'none';
+        emojiSummaryContent.textContent = '';
+        answerSection.style.display = 'block';
+        guessSection.classList.remove('active');
+        makeGuessBtn.disabled = false;
+        guessInput.disabled = false;
+        messageDiv.textContent = '';
+        messageDiv.className = 'message';
+    });
+    
+    // Allow Enter key to submit
+    answerInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') setAnswerBtn.click();
+    });
+    
+    guessInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') makeGuessBtn.click();
+    });
+</script>
 </body>
 </html>
