@@ -407,7 +407,7 @@
         const copyBtn = document.createElement('button');
         copyBtn.className = 'copy-btn';
         copyBtn.textContent = 'Copy';
-        const textToCopy = guess.split('').join(' ') + ' ' + emojiString;
+        const textToCopy = guess.split('').join(' ') + '\n' + emojiString;
         copyBtn.onclick = () => copyToClipboard(textToCopy, copyBtn);
         
         emojiRow.appendChild(emojiDisplay);
