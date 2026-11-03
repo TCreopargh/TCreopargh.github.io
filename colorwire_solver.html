@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>指定点对 · 填满图形</title>
+<style>
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:#f3f4f8;margin:0;padding:20px;color:#222}
+  .wrap{max-width:960px;margin:0 auto;display:flex;flex-wrap:wrap;gap:20px;justify-content:center}
+  h2{width:100%;text-align:center;margin:0;font-size:22px}
+  p.tip{width:100%;text-align:center;margin:0;color:#666;font-size:14px;line-height:1.5}
+  .board{position:relative;width:min(520px,calc(100vw - 40px));aspect-ratio:1/1;background:#fff;border-radius:10px;box-shadow:0 4px 16px #0002;touch-action:none;user-select:none;-webkit-user-select:none;overflow:hidden}
+  .grid{position:absolute;inset:0;display:grid;grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(10,1fr)}
+  .cell{border:1px solid #dde;background:#fafafa;cursor:pointer}
+  .cell.on{background:#555}
+  .cell.colored{background:var(--bg)}
+  svg{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}
+  .panel{width:min(360px,calc(100vw - 40px))}
+  button{padding:8px 14px;margin:3px;border:none;border-radius:6px;background:#4f6df5;color:#fff;font-size:14px;cursor:pointer}
+  button.gray{background:#8a8fa3}
+  button.mode{background:#dfe2ee;color:#333}
+  button.mode.active{background:#4f6df5;color:#fff}
+  button:hover{opacity:.88}
+  .result{background:#fff;border-radius:10px;padding:12px 14px;margin-top:10px;box-shadow:0 2px 8px #0001;font-size:14px;line-height:1.6}
+  .item{display:flex;align-items:center;gap:8px;margin:4px 0}
+  .dot{width:14px;height:14px;border-radius:50%;flex:none}
+  .big{font-size:22px;font-weight:bold}
+  .ok{color:#1a8f3c}.bad{color:#d33}.warn{color:#c77700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>指定点对 · 填满图形</h2>
+  <p class="tip">先画图形,再放置起终点对。求解:每个点对用一条路线连接(上下左右走,不交叉、不重叠),并且<b>填满图形的所有格子</b>。</p>
+  <div class="board">
+    <div class="grid" id="grid"></div>
+    <svg id="svg" viewBox="0 0 520 520"></svg>
+  </div>
+  <div class="panel">
+    <div>
+      <button class="mode active" id="mDraw">① 画图形</button>
+      <button class="mode" id="mPair">② 放置点对</button>
+    </div>
+    <div>
+      <button id="solve">求解</button>
+      <button class="gray" id="clearPairs">清除点对</button>
+      <button class="gray" id="clear">全部清空</button>
+      <button class="gray" id="fill">填满</button>
+    </div>
+    <div class="result" id="result">画图形:点击或拖动。放置点对:先点起点,再点终点;点已有端点可删除该点对。</div>
+  </div>
+</div>
+<script>
+const N=10,T=100,S=52;
+const MAXP=12;
+let shape=new Uint8Array(T);
+let pairs=[];          // {s,t}
+let pending=-1;        // 等待终点的起点
+let sol=null;          // paths
+let mode='draw';
+const grid=document.getElementById('grid'),svg=document.getElementById('svg'),resEl=document.getElementById('result');
+const cellEls=[];
+for(let i=0;i<T;i++){const d=document.createElement('div');d.className='cell';d.dataset.i=i;grid.appendChild(d);cellEls.push(d)}
+const col=(i,l=45)=>`hsl(${(i*137.508+10)%360},75%,${l}%)`;
+const f=v=>`(${(v/N|0)+1},${v%N+1})`;
+
+const adj=[];
+for(let v=0;v<T;v++){const r=v/N|0,c=v%N,a=[];
+  if(r>0)a.push(v-N);if(r<N-1)a.push(v+N);if(c>0)a.push(v-1);if(c<N-1)a.push(v+1);adj[v]=a}
+
+function termAt(v){for(let i=0;i<pairs.length;i++){if(pairs[i].s===v)return i;if(pairs[i].t===v)return i}return -1}
+function invalidate(){sol=null}
+
+// 交互
+let painting=false,pmode=1;
+function paint(i){
+  if(shape[i]===pmode)return;
+  shape[i]=pmode;
+  if(!pmode){const k=termAt(i);if(k>=0)removePair(k);if(pending===i)pending=-1}
+  invalidate();render();
+}
+function removePair(k){pairs.splice(k,1)}
+grid.addEventListener('pointerdown',e=>{
+  const t=e.target.closest('.cell');if(!t)return;
+  const i=+t.dataset.i;e.preventDefault();
+  if(mode==='draw'){pmode=shape[i]?0:1;painting=true;paint(i)}
+  else{
+    const k=termAt(i);
+    if(k>=0){removePair(k);pending=-1;invalidate();render();return}
+    if(pending===i){pending=-1;render();return}
+    if(pending<0){
+      if(pairs.length>=MAXP){setMsg(`最多 ${MAXP} 个点对。`,'warn');return}
+      shape[i]=1;pending=i;
+    }else{
+      shape[i]=1;pairs.push({s:pending,t:i});pending=-1;
+    }
+    invalidate();render();
+  }
+});
+window.addEventListener('pointermove',e=>{
+  if(!painting)return;
+  const t=document.elementFromPoint(e.clientX,e.clientY);
+  if(t&&t.classList.contains('cell'))paint(+t.dataset.i);
+});
+window.addEventListener('pointerup',()=>painting=false);
+window.addEventListener('pointercancel',()=>painting=false);
+
+function setMode(m){
+  mode=m;pending=-1;
+  document.getElementById('mDraw').classList.toggle('active',m==='draw');
+  document.getElementById('mPair').classList.toggle('active',m==='pair');
+  render();
+}
+document.getElementById('mDraw').onclick=()=>setMode('draw');
+document.getElementById('mPair').onclick=()=>setMode('pair');
+document.getElementById('clearPairs').onclick=()=>{pairs=[];pending=-1;invalidate();render()};
+document.getElementById('clear').onclick=()=>{shape.fill(0);pairs=[];pending=-1;invalidate();render()};
+document.getElementById('fill').onclick=()=>{shape.fill(1);invalidate();render()};
+document.getElementById('solve').onclick=()=>{
+  setMsg('求解中…','');
+  setTimeout(runSolve,30);
+};
+
+function setMsg(h,cls){resEl.innerHTML=cls?`<div class="${cls}">${h}</div>`:h}
+
+// ===== 求解器 =====
+function solver(deadline){
+  const owner=new Int8Array(T);        // -2 非图形, -1 空, >=0 被占用
+  for(let v=0;v<T;v++)owner[v]=shape[v]?-1:-2;
+  const P=pairs.length;
+  const head=pairs.map(p=>p.s),tail=pairs.map(p=>p.t);
+  pairs.forEach((p,i)=>{owner[p.s]=i;owner[p.t]=i});
+  const done=new Array(P).fill(false);
+  const paths=pairs.map(p=>[p.s]);
+  let freeCount=0;for(let v=0;v<T;v++)if(owner[v]===-1)freeCount++;
+  let nodes=0,timeout=false;
+  const open=new Uint8Array(T),comp=new Int16Array(T),hm=new Int32Array(T+1),tm=new Int32Array(T+1);
+
+  function check(){
+    open.fill(0);
+    for(let i=0;i<P;i++)if(!done[i]){open[head[i]]=1;open[tail[i]]=1}
+    let nc=0;comp.fill(-1);
+    for(let v=0;v<T;v++){
+      if(owner[v]!==-1)continue;
+      let c=0;for(const u of adj[v])if(owner[u]===-1||open[u])c++;
+      if(c<2)return false;
+      if(comp[v]<0){
+        const st=[v];comp[v]=nc;
+        while(st.length){const x=st.pop();for(const y of adj[x])if(owner[y]===-1&&comp[y]<0){comp[y]=nc;st.push(y)}}
+        hm[nc]=0;tm[nc]=0;nc++;
+      }
+    }
+    for(let i=0;i<P;i++)if(!done[i]){
+      for(const u of adj[head[i]])if(owner[u]===-1)hm[comp[u]]|=1<<i;
+      for(const u of adj[tail[i]])if(owner[u]===-1)tm[comp[u]]|=1<<i;
+    }
+    for(let c=0;c<nc;c++)if((hm[c]|tm[c])===0)return false;
+    for(let i=0;i<P;i++)if(!done[i]){
+      if(adj[head[i]].includes(tail[i]))continue;
+      let ok=false;
+      for(let c=0;c<nc;c++)if((hm[c]>>i&1)&&(tm[c]>>i&1)){ok=true;break}
+      if(!ok)return false;
+    }
+    return true;
+  }
+  function rec(){
+    if(++nodes%256===0&&Date.now()>deadline){timeout=true;return false}
+    let remain=0;for(let i=0;i<P;i++)if(!done[i])remain++;
+    if(remain===0)return freeCount===0;
+    if(!check())return false;
+    // 选选项最少的点对
+    let best=-1,bestOpts=null;
+    for(let i=0;i<P;i++){
+      if(done[i])continue;
+      const opts=[];
+      for(const u of adj[head[i]]){
+        if(owner[u]===-1)opts.push(u);
+        else if(u===tail[i])opts.push(-1);   // 结束
+      }
+      if(opts.length===0)return false;
+      if(best<0||opts.length<bestOpts.length){best=i;bestOpts=opts;if(opts.length===1)break}
+    }
+    const i=best,h0=head[i];
+    for(let k=bestOpts.length-1;k>=0;k--){}   // 保留结构
+    // 随机打乱,结束选项放最后
+    bestOpts.sort(()=>Math.random()-.5);
+    for(const o of bestOpts){
+      if(o===-1){
+        done[i]=true;paths[i].push(tail[i]);head[i]=tail[i];
+        if(rec())return true;
+        paths[i].pop();head[i]=h0;done[i]=false;
+      }else{
+        owner[o]=i;freeCount--;head[i]=o;paths[i].push(o);
+        if(rec())return true;
+        paths[i].pop();head[i]=h0;freeCount++;owner[o]=-1;
+      }
+      if(timeout)return false;
+    }
+    return false;
+  }
+  const ok=rec();
+  return {ok,timeout,nodes,paths:ok?paths.map(p=>p.slice()):null};
+}
+
+function runSolve(){
+  const n=shape.reduce((a,b)=>a+b,0);
+  if(!n){setMsg('请先画出图形。','warn');return}
+  if(!pairs.length){setMsg('请先放置至少一个起终点对。','warn');return}
+  if(pending>=0){setMsg('还有一个起点没有放终点,请先放置终点(或点击该起点取消)。','warn');return}
+  // 图形必须连通到点对:先做简单检查
+  const t0=Date.now();
+  const r=solver(t0+10000);
+  const ms=Date.now()-t0;
+  if(r.ok){sol=r.paths;render();
+    let h=`<div class="big ok">有解</div><div style="color:#777">用时 ${ms} ms,搜索 ${r.nodes} 个节点</div>`;
+    sol.forEach((p,i)=>{h+=`<div class="item"><span class="dot" style="background:${col(i)}"></span>点对 ${i+1}:${f(p[0])} → ${f(p[p.length-1])},共 ${p.length} 格</div>`});
+    resEl.innerHTML=h;
+  }else if(r.timeout){
+    sol=null;render();setMsg(`<b>搜索超时</b>(10 秒),无法确定是否有解。请简化图形或增加点对。`,'warn');
+  }else{
+    sol=null;render();
+    resEl.innerHTML=`<div class="big bad">无解</div><div style="color:#555;margin-top:4px">已穷举(${r.nodes} 个节点,${ms} ms):不存在把图形所有格子填满的连线方案。</div>`;
+  }
+}
+
+// ===== 绘制 =====
+function render(){
+  const colorOf=new Array(T).fill(null);
+  if(sol)sol.forEach((p,i)=>p.forEach(v=>colorOf[v]=i));
+  for(let i=0;i<T;i++){
+    const el=cellEls[i];
+    el.className='cell'+(shape[i]?' on':'')+(colorOf[i]!==null?' colored':'');
+    if(colorOf[i]!==null)el.style.setProperty('--bg',col(colorOf[i],88));
+  }
+  const Pt=v=>[(v%N+.5)*S,((v/N|0)+.5)*S];
+  let s='';
+  if(sol)sol.forEach((p,i)=>{
+    s+=`<polyline fill="none" stroke="${col(i)}" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" opacity=".9" points="${p.map(v=>Pt(v).join(',')).join(' ')}"/>`;
+  });
+  pairs.forEach((p,i)=>{
+    const [x1,y1]=Pt(p.s),[x2,y2]=Pt(p.t),c=col(i);
+    s+=`<circle cx="${x1}" cy="${y1}" r="16" fill="#fff" stroke="${c}" stroke-width="4"/><text x="${x1}" y="${y1+5}" font-size="14" text-anchor="middle" font-weight="bold" fill="${c}">${i+1}</text>`;
+    s+=`<circle cx="${x2}" cy="${y2}" r="16" fill="${c}" stroke="#fff" stroke-width="2"/><text x="${x2}" y="${y2+5}" font-size="14" text-anchor="middle" font-weight="bold" fill="#fff">${i+1}</text>`;
+  });
+  if(pending>=0){
+    const [x,y]=Pt(pending),c=col(pairs.length);
+    s+=`<circle cx="${x}" cy="${y}" r="16" fill="#fff" stroke="${c}" stroke-width="4" stroke-dasharray="5 4"/><text x="${x}" y="${y+5}" font-size="14" text-anchor="middle" font-weight="bold" fill="${c}">${pairs.length+1}</text>`;
+  }
+  svg.innerHTML=s;
+  if(!sol&&!resEl.dataset.keep){
+    const n=shape.reduce((a,b)=>a+b,0);
+    let t=`图形 <b>${n}</b> 格,点对 <b>${pairs.length}</b> 个。`;
+    if(mode==='pair')t+=pending>=0?'<br>请点击<b>终点</b>(实心圆)。':'<br>点击一个格子作为<b>起点</b>(空心圆);点已有端点可删除点对。';
+    else t+='<br>点击或拖动绘制/擦除格子。';
+    resEl.innerHTML=t;
+  }
+}
+render();
+</script>
+</body>
+</html>

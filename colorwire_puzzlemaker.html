@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>10×10 最少点对覆盖</title>
+<style>
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,"PingFang SF","PingFang SC","Microsoft YaHei",sans-serif;background:#f3f4f8;margin:0;padding:20px;color:#222}
+  .wrap{max-width:960px;margin:0 auto;display:flex;flex-wrap:wrap;gap:20px;justify-content:center}
+  h2{width:100%;text-align:center;margin:0;font-size:22px}
+  p.tip{width:100%;text-align:center;margin:0;color:#666;font-size:14px;line-height:1.5}
+  .board{position:relative;width:min(520px,calc(100vw - 40px));aspect-ratio:1/1;background:#fff;border-radius:10px;box-shadow:0 4px 16px #0002;touch-action:none;user-select:none;-webkit-user-select:none;overflow:hidden}
+  .grid{position:absolute;inset:0;display:grid;grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(10,1fr)}
+  .cell{border:1px solid #dde;background:#fafafa;cursor:pointer;transition:background .1s}
+  .cell.on{background:#555}
+  .cell.on.colored{background:var(--bg)}
+  .cell.bad{background:#e55 !important}
+  svg{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}
+  .panel{width:min(340px,calc(100vw - 40px))}
+  button{padding:8px 14px;margin:3px;border:none;border-radius:6px;background:#4f6df5;color:#fff;font-size:14px;cursor:pointer}
+  button.gray{background:#8a8fa3}
+  button:hover{opacity:.88}
+  .result{background:#fff;border-radius:10px;padding:12px 14px;margin-top:10px;box-shadow:0 2px 8px #0001;font-size:14px;word-break:break-all}
+  .big{font-size:22px;font-weight:bold;color:#4f6df5}
+  .item{display:flex;align-items:center;gap:8px;margin:5px 0}
+  .dot{width:14px;height:14px;border-radius:50%;flex:none}
+  .warn{color:#c77700}
+  .ok{color:#1a8f3c}
+  .none{font-size:22px;font-weight:bold;color:#d33}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>10×10 最少点对路径覆盖</h2>
+  <p class="tip">在格子上点击或拖动画出图形(深色=图形)。每个点对=一个起点+一个终点(不能是同一格),两点间的路线只能上下左右走,每格只经过一次。</p>
+  <div class="board" id="board">
+    <div class="grid" id="grid"></div>
+    <svg id="svg" viewBox="0 0 520 520"></svg>
+  </div>
+  <div class="panel">
+    <div>
+      <button id="calc">计算最少点对</button>
+      <button id="reroll" class="gray">换一个随机方案</button><br>
+      <button id="clear" class="gray">清空</button>
+      <button id="fill" class="gray">填满</button>
+      <button id="rnd" class="gray">随机图形</button>
+      <button id="ring" class="gray">回字形</button>
+    </div>
+    <div class="result" id="result">画好图形后点击“计算最少点对”。</div>
+  </div>
+</div>
+<script>
+const N=10,S=52,T=N*N;
+let shape=new Uint8Array(T);
+let comps=null;
+let failInfo=null;
+const grid=document.getElementById('grid'),svg=document.getElementById('svg'),resultEl=document.getElementById('result');
+const cellEls=[];
+for(let i=0;i<T;i++){
+  const d=document.createElement('div');d.className='cell';d.dataset.i=i;grid.appendChild(d);cellEls.push(d);
+}
+let painting=false,mode=1;
+function reset(){comps=null;failInfo=null}
+function setCell(i){ if(shape[i]!==mode){shape[i]=mode;reset();render();} }
+grid.addEventListener('pointerdown',e=>{
+  const t=e.target.closest('.cell');if(!t)return;
+  const i=+t.dataset.i;mode=shape[i]?0:1;painting=true;setCell(i);e.preventDefault();
+});
+window.addEventListener('pointermove',e=>{
+  if(!painting)return;
+  const t=document.elementFromPoint(e.clientX,e.clientY);
+  if(t&&t.classList.contains('cell'))setCell(+t.dataset.i);
+});
+window.addEventListener('pointerup',()=>painting=false);
+window.addEventListener('pointercancel',()=>painting=false);
+
+function i2(r,c){return r*N+c}
+const adjAll=[];
+for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+  const a=[];
+  if(r>0)a.push(i2(r-1,c));if(r<N-1)a.push(i2(r+1,c));
+  if(c>0)a.push(i2(r,c-1));if(c<N-1)a.push(i2(r,c+1));
+  adjAll[i2(r,c)]=a;
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+function components(){
+  const seen=new Uint8Array(T),res=[];
+  for(let s=0;s<T;s++){
+    if(!shape[s]||seen[s])continue;
+    const q=[s],cells=[];seen[s]=1;
+    while(q.length){const v=q.pop();cells.push(v);
+      for(const u of adjAll[v])if(shape[u]&&!seen[u]){seen[u]=1;q.push(u)}}
+    res.push(cells);
+  }
+  return res;
+}
+
+function runSearch(cells,adj,k,limit,deadline){
+  const inU=new Uint8Array(T);cells.forEach(v=>inU[v]=1);
+  const seen=new Uint8Array(T);
+  let nodes=0,aborted=false,remaining=cells.length;
+  const paths=[];let cur=null;
+  const udeg=v=>{let d=0;for(const u of adj[v])if(inU[u])d++;return d};
+  function need(head){
+    seen.fill(0);
+    let sum=0,ends=0;
+    for(const v of cells){
+      if(!inU[v])continue;
+      const d=udeg(v);
+      const isAdj=head>=0&&adj[head].includes(v);
+      if(!isAdj){
+        if(d===0)return 1e9;
+        if(d===1)ends+=1;
+      }
+      if(!seen[v]){
+        let b=0,w=0;const q=[v];seen[v]=1;
+        while(q.length){const x=q.pop();
+          if(((x/N|0)+x%N)&1)b++;else w++;
+          for(const y of adj[x])if(inU[y]&&!seen[y]){seen[y]=1;q.push(y)}}
+        sum+=Math.max(1,Math.abs(b-w));
+      }
+    }
+    if(head>=0&&adj[head].some(u=>inU[u]))sum-=1;
+    const e=Math.ceil(Math.max(0,ends-(head>=0?1:0))/2);
+    return Math.max(sum,e);
+  }
+  function rec(head,used){
+    if(remaining===0)return cur.length>=2;
+    if(++nodes>limit||((nodes&127)===0&&Date.now()>deadline)){aborted=true;return false}
+    if(used+need(head)>k)return false;
+    if(head>=0){
+      const nb=shuffle(adj[head].filter(u=>inU[u]));
+      nb.sort((a,b)=>udeg(a)-udeg(b));
+      for(const u of nb){
+        inU[u]=0;remaining--;cur.push(u);
+        if(rec(u,used))return true;
+        cur.pop();remaining++;inU[u]=1;
+        if(aborted)return false;
+      }
+    }
+    if(used>=k)return false;
+    if(cur&&cur.length<2)return false;
+    const U=shuffle(cells.filter(v=>inU[v]));
+    const ds=new Map(U.map(v=>[v,udeg(v)]));
+    U.sort((a,b)=>ds.get(a)-ds.get(b));
+    let cand=U;
+    if(ds.get(U[0])<=1)cand=[U[0]];
+    const saveCur=cur;
+    for(const c of cand){
+      inU[c]=0;remaining--;
+      cur=[c];paths.push(cur);
+      if(rec(c,used+1))return true;
+      paths.pop();cur=saveCur;remaining++;inU[c]=1;
+      if(aborted)return false;
+    }
+    return false;
+  }
+  const ok=rec(-1,0);
+  return {ok,aborted,paths:ok?paths.map(p=>p.slice()):null};
+}
+function solveK(cells,k,deadline){
+  let limit=4000;
+  while(true){
+    const r=runSearch(cells,adjAll,k,limit,deadline);
+    if(r.ok)return {status:'ok',paths:r.paths};
+    if(!r.aborted)return {status:'fail'};
+    if(Date.now()>deadline)return {status:'timeout'};
+    limit*=2;
+  }
+}
+function solveComp(cells){
+  if(cells.length<2)return {none:true,cells};
+  const kmax=Math.floor(cells.length/2);
+  const feas=solveK(cells,kmax,Date.now()+2500);
+  if(feas.status==='fail')return {none:true,cells};
+  if(feas.status==='timeout')return {unknown:true,cells};
+  let b=0,w=0;
+  for(const v of cells){if(((v/N|0)+v%N)&1)b++;else w++}
+  const lb=Math.max(1,Math.abs(b-w));
+  let proven=true;
+  for(let k=lb;k<kmax;k++){
+    const r=solveK(cells,k,Date.now()+800);
+    if(r.status==='ok')return {cells,k,paths:r.paths,proven};
+    if(r.status==='timeout')proven=false;
+  }
+  return {cells,k:feas.paths.length,paths:feas.paths,proven};
+}
+
+function color(i,total,l=50){return `hsl(${(i*137.508)%360},75%,${l}%)`}
+
+function render(){
+  const colorOf=new Array(T).fill(null);
+  let paths=[];
+  if(comps){comps.forEach(c=>c.paths.forEach(p=>paths.push(p)));}
+  paths.forEach((p,i)=>p.forEach(v=>colorOf[v]=color(i,paths.length,55)));
+  const bad=new Set(failInfo?failInfo.bad:[]);
+  for(let i=0;i<T;i++){
+    const el=cellEls[i];
+    el.className='cell'+(shape[i]?' on':'')+(shape[i]&&colorOf[i]?' colored':'')+(bad.has(i)?' bad':'');
+    if(colorOf[i])el.style.setProperty('--bg',colorOf[i].replace('55%','88%'));
+  }
+  let s='';
+  const P=v=>[(v%N+.5)*S,((v/N|0)+.5)*S];
+  paths.forEach((p,i)=>{
+    const col=color(i,paths.length,45);
+    s+=`<polyline fill="none" stroke="${col}" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" opacity=".9" points="${p.map(v=>P(v).join(',')).join(' ')}"/>`;
+    const [x1,y1]=P(p[0]),[x2,y2]=P(p[p.length-1]);
+    s+=`<circle cx="${x1}" cy="${y1}" r="15" fill="#fff" stroke="${col}" stroke-width="4"/><text x="${x1}" y="${y1+5}" font-size="14" text-anchor="middle" font-weight="bold" fill="${col}">起</text>`;
+    s+=`<circle cx="${x2}" cy="${y2}" r="15" fill="${col}" stroke="#fff" stroke-width="2"/><text x="${x2}" y="${y2+5}" font-size="14" text-anchor="middle" font-weight="bold" fill="#fff">终</text>`;
+  });
+  svg.innerHTML=s;
+  renderResult(paths);
+}
+function renderResult(paths){
+  if(failInfo){
+    if(failInfo.type==='none'){
+      resultEl.innerHTML=`<div class="none">无解</div><div style="margin-top:6px;color:#555">${failInfo.msg}</div>`;
+    }else{
+      resultEl.innerHTML=`<div class="warn"><b>搜索超时</b>,无法确定是否有解。</div><div style="margin-top:6px;color:#555">${failInfo.msg}</div>`;
+    }
+    return;
+  }
+  if(!comps){
+    const n=shape.reduce((a,b)=>a+b,0);
+    resultEl.innerHTML=n?`当前图形共 <b>${n}</b> 格。点击“计算最少点对”。`:'画好图形后点击“计算最少点对”。';
+    return;
+  }
+  const total=paths.length,proven=comps.every(c=>c.proven);
+  let h=`<div>最少需要 <span class="big">${total}</span> 个点对</div>`;
+  h+=`<div class="${proven?'ok':'warn'}" style="margin:4px 0 8px">${proven?'✔ 已证明为最小值':'⚠ 搜索超时,该值为找到的最优方案(可能不是严格最小)'}</div>`;
+  h+=`<div style="color:#777;margin-bottom:6px">图形含 ${comps.length} 个互不相连的块;下面是其中一个随机方案(坐标为 行,列)</div>`;
+  paths.forEach((p,i)=>{
+    const f=v=>`(${(v/N|0)+1},${v%N+1})`;
+    h+=`<div class="item"><span class="dot" style="background:${color(i,total,45)}"></span>${f(p[0])} → ${f(p[p.length-1])},共 ${p.length} 格</div>`;
+  });
+  resultEl.innerHTML=h;
+}
+
+function calc(){
+  const n=shape.reduce((a,b)=>a+b,0);
+  if(!n){resultEl.textContent='请先画出图形!';return}
+  resultEl.textContent='计算中…';
+  setTimeout(()=>{
+    reset();
+    const rs=components().map(solveComp);
+    const none=rs.filter(r=>r.none);
+    const unk=rs.filter(r=>r.unknown);
+    if(none.length){
+      failInfo={type:'none',bad:none.flatMap(r=>r.cells),
+        msg:'红色区域无法被“起点≠终点”的路线完整覆盖(例如孤立的单格,或 T 形这类分叉过多的结构)。'};
+    }else if(unk.length){
+      failInfo={type:'unknown',bad:unk.flatMap(r=>r.cells),msg:'红色区域过于复杂,请简化图形后重试。'};
+    }else comps=rs;
+    render();
+  },30);
+}
+function reroll(){
+  if(!comps){calc();return}
+  resultEl.textContent='生成中…';
+  setTimeout(()=>{
+    comps=comps.map(c=>{
+      const r=solveK(c.cells,c.k,Date.now()+1500);
+      return r.status==='ok'?{...c,paths:r.paths}:c;
+    });
+    render();
+  },30);
+}
+document.getElementById('calc').onclick=calc;
+document.getElementById('reroll').onclick=reroll;
+document.getElementById('clear').onclick=()=>{shape.fill(0);reset();render()};
+document.getElementById('fill').onclick=()=>{shape.fill(1);reset();render()};
+document.getElementById('rnd').onclick=()=>{for(let i=0;i<T;i++)shape[i]=Math.random()<.6?1:0;reset();render()};
+document.getElementById('ring').onclick=()=>{
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    const d=Math.min(r,c,N-1-r,N-1-c);shape[i2(r,c)]=(d%2===0)?1:0;
+  }
+  reset();render();
+};
+render();
+</script>
+</body>
+</html>
