@@ -3,101 +3,313 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>10×10 最少点对覆盖</title>
+<title>创建谜题 · 填满图形</title>
 <style>
   *{box-sizing:border-box}
-  body{font-family:-apple-system,"PingFang SF","PingFang SC","Microsoft YaHei",sans-serif;background:#f3f4f8;margin:0;padding:20px;color:#222}
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:#f3f4f8;margin:0;padding:20px;color:#222}
   .wrap{max-width:960px;margin:0 auto;display:flex;flex-wrap:wrap;gap:20px;justify-content:center}
   h2{width:100%;text-align:center;margin:0;font-size:22px}
   p.tip{width:100%;text-align:center;margin:0;color:#666;font-size:14px;line-height:1.5}
   .board{position:relative;width:min(520px,calc(100vw - 40px));aspect-ratio:1/1;background:#fff;border-radius:10px;box-shadow:0 4px 16px #0002;touch-action:none;user-select:none;-webkit-user-select:none;overflow:hidden}
   .grid{position:absolute;inset:0;display:grid;grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(10,1fr)}
-  .cell{border:1px solid #dde;background:#fafafa;cursor:pointer;transition:background .1s}
+  .cell{border:1px solid #dde;background:#fafafa;cursor:pointer}
   .cell.on{background:#555}
-  .cell.on.colored{background:var(--bg)}
-  .cell.bad{background:#e55 !important}
+  .cell.colored{background:var(--bg)}
   svg{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}
-  .panel{width:min(340px,calc(100vw - 40px))}
+  .panel{width:min(360px,calc(100vw - 40px))}
   button{padding:8px 14px;margin:3px;border:none;border-radius:6px;background:#4f6df5;color:#fff;font-size:14px;cursor:pointer}
   button.gray{background:#8a8fa3}
+  button.green{background:#22a55b}
+  button.orange{background:#e8892b}
+  button.mode{background:#dfe2ee;color:#333;padding:8px 10px}
+  button.mode.active{background:#4f6df5;color:#fff}
+  button:disabled{opacity:.5;cursor:wait}
   button:hover{opacity:.88}
-  .result{background:#fff;border-radius:10px;padding:12px 14px;margin-top:10px;box-shadow:0 2px 8px #0001;font-size:14px;word-break:break-all}
-  .big{font-size:22px;font-weight:bold;color:#4f6df5}
-  .item{display:flex;align-items:center;gap:8px;margin:5px 0}
+  .box{background:#fff;border-radius:10px;padding:8px 10px;margin-top:8px;box-shadow:0 2px 8px #0001;font-size:14px}
+  .box input{width:70px;padding:6px;border:1px solid #ccd;border-radius:6px;font-size:14px}
+  .result{background:#fff;border-radius:10px;padding:12px 14px;margin-top:10px;box-shadow:0 2px 8px #0001;font-size:14px;line-height:1.6}
+  .item{display:flex;align-items:center;gap:8px;margin:4px 0}
   .dot{width:14px;height:14px;border-radius:50%;flex:none}
-  .warn{color:#c77700}
-  .ok{color:#1a8f3c}
-  .none{font-size:22px;font-weight:bold;color:#d33}
+  .big{font-size:22px;font-weight:bold}
+  .ok{color:#1a8f3c}.bad{color:#d33}.warn{color:#c77700}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h2>10×10 最少点对路径覆盖</h2>
-  <p class="tip">在格子上点击或拖动画出图形(深色=图形)。每个点对=一个起点+一个终点(不能是同一格),两点间的路线只能上下左右走,每格只经过一次。</p>
-  <div class="board" id="board">
+  <h2>创建谜题 · 填满图形</h2>
+  <p class="tip">三种方式出题:① 画图形后自动创建点对;② 手动放点对;③ 直接画线,由答案反推谜题。点“求解”会用路线填满所有格子。</p>
+  <div class="board">
     <div class="grid" id="grid"></div>
     <svg id="svg" viewBox="0 0 520 520"></svg>
   </div>
   <div class="panel">
     <div>
-      <button id="calc">计算最少点对</button>
-      <button id="reroll" class="gray">换一个随机方案</button><br>
-      <button id="clear" class="gray">清空</button>
-      <button id="fill" class="gray">填满</button>
-      <button id="rnd" class="gray">随机图形</button>
-      <button id="ring" class="gray">回字形</button>
+      <button class="mode active" id="mDraw">① 画图形</button>
+      <button class="mode" id="mPair">② 放置点对</button>
+      <button class="mode" id="mLine">③ 画线</button>
     </div>
-    <div class="result" id="result">画好图形后点击“计算最少点对”。</div>
+    <div class="box" id="boxAuto">
+      点对数:<input type="number" id="cnt" min="1" placeholder="最少">
+      <button class="green" id="create">创建谜题</button>
+      <div style="color:#888;font-size:12px;margin-top:4px">留空 = 最小可能点对数;可填更大的数,最多为 格子数÷2。</div>
+    </div>
+    <div class="box" id="boxLine" style="display:none">
+      <button class="orange" id="fromLines">由画线生成谜题</button>
+      <button class="gray" id="undoLine">撤销上一条</button>
+      <button class="gray" id="clearLines">清除画线</button>
+      <div style="color:#888;font-size:12px;margin-top:4px">按住拖动画一条线(只能上下左右,不能经过已有线);拖回上一格可回退;点一下已有的线可删除它。每条线至少 2 格。</div>
+    </div>
+    <div>
+      <button id="solve">求解</button>
+      <button class="gray" id="showAns" style="display:none">查看原答案</button>
+      <button class="gray" id="clearPairs">清除点对</button>
+      <button class="gray" id="clear">全部清空</button>
+      <button class="gray" id="fill">填满</button>
+    </div>
+    <div class="result" id="result"></div>
   </div>
 </div>
 <script>
-const N=10,S=52,T=N*N;
+const N=10,T=100,S=52,MAXP=50;
 let shape=new Uint8Array(T);
-let comps=null;
-let failInfo=null;
-const grid=document.getElementById('grid'),svg=document.getElementById('svg'),resultEl=document.getElementById('result');
+let pairs=[];
+let pending=-1;
+let sol=null;
+let answer=null;      // 由画线生成谜题时保存的原答案
+let lines=[];         // 画线模式中的路线
+let drawing=null;     // 正在画的路线
+let mode='draw';
+let keepMsg=false;
+const grid=document.getElementById('grid'),svg=document.getElementById('svg'),resEl=document.getElementById('result'),cntEl=document.getElementById('cnt');
+const showAnsBtn=document.getElementById('showAns');
 const cellEls=[];
-for(let i=0;i<T;i++){
-  const d=document.createElement('div');d.className='cell';d.dataset.i=i;grid.appendChild(d);cellEls.push(d);
+for(let i=0;i<T;i++){const d=document.createElement('div');d.className='cell';d.dataset.i=i;grid.appendChild(d);cellEls.push(d)}
+const col=(i,l=45)=>`hsl(${(i*137.508+10)%360},75%,${l}%)`;
+const f=v=>`(${(v/N|0)+1},${v%N+1})`;
+const adj=[];
+for(let v=0;v<T;v++){const r=v/N|0,c=v%N,a=[];
+  if(r>0)a.push(v-N);if(r<N-1)a.push(v+N);if(c>0)a.push(v-1);if(c<N-1)a.push(v+1);adj[v]=a}
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+
+function termAt(v){for(let i=0;i<pairs.length;i++){if(pairs[i].s===v||pairs[i].t===v)return i}return -1}
+function lineAt(v){for(let i=0;i<lines.length;i++)if(lines[i].includes(v))return i;return -1}
+function invalidate(){sol=null;answer=null;keepMsg=false}
+function shapeChanged(){cntEl.value='';invalidate()}
+function setMsg(h,cls){resEl.innerHTML=cls?`<div class="${cls}">${h}</div>`:h;keepMsg=true}
+
+// ===== 交互 =====
+let painting=false,pmode=1,tapDel=-1,moved=false;
+function paint(i){
+  if(shape[i]===pmode)return;
+  shape[i]=pmode;
+  if(!pmode){const k=termAt(i);if(k>=0)pairs.splice(k,1);if(pending===i)pending=-1}
+  shapeChanged();render();
 }
-let painting=false,mode=1;
-function reset(){comps=null;failInfo=null}
-function setCell(i){ if(shape[i]!==mode){shape[i]=mode;reset();render();} }
+function extendLine(j){
+  const n=drawing.length,last=drawing[n-1];
+  if(j===last)return;
+  if(n>=2&&j===drawing[n-2]){drawing.pop();moved=true;render();return}
+  if(!adj[last].includes(j))return;
+  if(drawing.includes(j)||lineAt(j)>=0)return;
+  drawing.push(j);moved=true;render();
+}
 grid.addEventListener('pointerdown',e=>{
   const t=e.target.closest('.cell');if(!t)return;
-  const i=+t.dataset.i;mode=shape[i]?0:1;painting=true;setCell(i);e.preventDefault();
+  const i=+t.dataset.i;e.preventDefault();
+  if(mode==='draw'){pmode=shape[i]?0:1;painting=true;paint(i)}
+  else if(mode==='line'){
+    painting=true;moved=false;keepMsg=false;
+    const k=lineAt(i);
+    if(k>=0){tapDel=k;drawing=null}
+    else{tapDel=-1;drawing=[i];render()}
+  }else{
+    const k=termAt(i);
+    if(k>=0){pairs.splice(k,1);pending=-1;invalidate();render();return}
+    if(pending===i){pending=-1;render();return}
+    if(pending<0){
+      if(pairs.length>=MAXP){setMsg(`最多 ${MAXP} 个点对。`,'warn');return}
+      shape[i]=1;pending=i;
+    }else{shape[i]=1;pairs.push({s:pending,t:i});pending=-1}
+    invalidate();render();
+  }
 });
 window.addEventListener('pointermove',e=>{
   if(!painting)return;
   const t=document.elementFromPoint(e.clientX,e.clientY);
-  if(t&&t.classList.contains('cell'))setCell(+t.dataset.i);
+  if(!(t&&t.classList.contains('cell')))return;
+  const i=+t.dataset.i;
+  if(mode==='draw')paint(i);
+  else if(mode==='line'&&drawing)extendLine(i);
 });
-window.addEventListener('pointerup',()=>painting=false);
-window.addEventListener('pointercancel',()=>painting=false);
-
-function i2(r,c){return r*N+c}
-const adjAll=[];
-for(let r=0;r<N;r++)for(let c=0;c<N;c++){
-  const a=[];
-  if(r>0)a.push(i2(r-1,c));if(r<N-1)a.push(i2(r+1,c));
-  if(c>0)a.push(i2(r,c-1));if(c<N-1)a.push(i2(r,c+1));
-  adjAll[i2(r,c)]=a;
+function endPointer(){
+  if(!painting)return;
+  painting=false;
+  if(mode==='line'){
+    if(drawing){
+      if(drawing.length>=2)lines.push(drawing);
+      drawing=null;
+    }else if(tapDel>=0&&!moved){lines.splice(tapDel,1)}
+    tapDel=-1;render();
+  }
 }
-function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+window.addEventListener('pointerup',endPointer);
+window.addEventListener('pointercancel',endPointer);
 
+function setMode(m){
+  mode=m;pending=-1;keepMsg=false;drawing=null;
+  document.getElementById('mDraw').classList.toggle('active',m==='draw');
+  document.getElementById('mPair').classList.toggle('active',m==='pair');
+  document.getElementById('mLine').classList.toggle('active',m==='line');
+  document.getElementById('boxAuto').style.display=m==='line'?'none':'';
+  document.getElementById('boxLine').style.display=m==='line'?'':'none';
+  render();
+}
+document.getElementById('mDraw').onclick=()=>setMode('draw');
+document.getElementById('mPair').onclick=()=>setMode('pair');
+document.getElementById('mLine').onclick=()=>setMode('line');
+document.getElementById('clearPairs').onclick=()=>{pairs=[];pending=-1;invalidate();render()};
+document.getElementById('clear').onclick=()=>{shape.fill(0);pairs=[];lines=[];drawing=null;pending=-1;shapeChanged();render()};
+document.getElementById('fill').onclick=()=>{shape.fill(1);shapeChanged();render()};
+document.getElementById('undoLine').onclick=()=>{lines.pop();keepMsg=false;render()};
+document.getElementById('clearLines').onclick=()=>{lines=[];keepMsg=false;render()};
+document.getElementById('solve').onclick=()=>{setMsg('求解中…','');setTimeout(runSolve,30)};
+document.getElementById('create').onclick=()=>{
+  setMsg('正在创建谜题…','');
+  document.getElementById('create').disabled=true;
+  setTimeout(()=>{try{createPuzzle()}finally{document.getElementById('create').disabled=false}},30);
+};
+showAnsBtn.onclick=()=>{
+  if(!answer)return;
+  sol=answer.map(p=>p.slice());render();
+  setMsg(`<div class="big ok">原答案</div><div style="color:#777">这是你画的线。点“求解”可以让程序自己找一个解(可能和你的不同)。</div>`,'');
+};
+// 由画线生成谜题:图形=所有线经过的格子,点对=每条线的两端
+document.getElementById('fromLines').onclick=()=>{
+  if(!lines.length){setMsg('请先画至少一条线(每条至少 2 格)。','warn');return}
+  shape.fill(0);
+  lines.forEach(p=>p.forEach(v=>shape[v]=1));
+  pairs=lines.map(p=>Math.random()<.5?{s:p[0],t:p[p.length-1]}:{s:p[p.length-1],t:p[0]});
+  const ans=lines.map(p=>p.slice());
+  const n=shape.reduce((a,b)=>a+b,0);
+  lines=[];drawing=null;pending=-1;cntEl.value='';
+  sol=null;answer=ans;
+  setMode('pair');
+  setMsg(`<div class="big ok">谜题已生成</div><div>图形 <b>${n}</b> 格,<b>${pairs.length}</b> 个点对。</div>`+
+    `<div style="color:#777;margin-top:4px">图形和点对都是由你画的线反推出来的,所以至少有一个解。可以自己试,也可以点“求解”或“查看原答案”。</div>`,'');
+};
+
+// ===== 求解器(给定点对,填满图形) =====
+function solver(deadline){
+  const owner=new Int8Array(T);
+  for(let v=0;v<T;v++)owner[v]=shape[v]?-1:-2;
+  const P=pairs.length;
+  const head=pairs.map(p=>p.s),tail=pairs.map(p=>p.t);
+  pairs.forEach((p,i)=>{owner[p.s]=i;owner[p.t]=i});
+  const done=new Array(P).fill(false);
+  const paths=pairs.map(p=>[p.s]);
+  let freeCount=0;for(let v=0;v<T;v++)if(owner[v]===-1)freeCount++;
+  let nodes=0,timeout=false;
+  const open=new Uint8Array(T),comp=new Int16Array(T);
+  const hm=new Uint8Array(T*P),tm=new Uint8Array(T*P);
+
+  function check(){
+    open.fill(0);
+    for(let i=0;i<P;i++)if(!done[i]){open[head[i]]=1;open[tail[i]]=1}
+    let nc=0;comp.fill(-1);
+    for(let v=0;v<T;v++){
+      if(owner[v]!==-1)continue;
+      let c=0;for(const u of adj[v])if(owner[u]===-1||open[u])c++;
+      if(c<2)return false;
+      if(comp[v]<0){
+        const st=[v];comp[v]=nc;
+        while(st.length){const x=st.pop();for(const y of adj[x])if(owner[y]===-1&&comp[y]<0){comp[y]=nc;st.push(y)}}
+        nc++;
+      }
+    }
+    hm.fill(0,0,nc*P);tm.fill(0,0,nc*P);
+    const touched=new Uint8Array(nc);
+    for(let i=0;i<P;i++)if(!done[i]){
+      for(const u of adj[head[i]])if(owner[u]===-1){hm[comp[u]*P+i]=1;touched[comp[u]]=1}
+      for(const u of adj[tail[i]])if(owner[u]===-1){tm[comp[u]*P+i]=1;touched[comp[u]]=1}
+    }
+    for(let c=0;c<nc;c++)if(!touched[c])return false;
+    for(let i=0;i<P;i++)if(!done[i]){
+      if(adj[head[i]].includes(tail[i]))continue;
+      let ok=false;
+      for(let c=0;c<nc;c++)if(hm[c*P+i]&&tm[c*P+i]){ok=true;break}
+      if(!ok)return false;
+    }
+    return true;
+  }
+  function rec(){
+    if(++nodes%256===0&&Date.now()>deadline){timeout=true;return false}
+    let remain=0;for(let i=0;i<P;i++)if(!done[i])remain++;
+    if(remain===0)return freeCount===0;
+    if(!check())return false;
+    let best=-1,bestOpts=null;
+    for(let i=0;i<P;i++){
+      if(done[i])continue;
+      const opts=[];
+      for(const u of adj[head[i]]){
+        if(owner[u]===-1)opts.push(u);
+        else if(u===tail[i])opts.push(-1);
+      }
+      if(opts.length===0)return false;
+      if(best<0||opts.length<bestOpts.length){best=i;bestOpts=opts;if(opts.length===1)break}
+    }
+    const i=best,h0=head[i];
+    shuffle(bestOpts);
+    for(const o of bestOpts){
+      if(o===-1){
+        done[i]=true;paths[i].push(tail[i]);head[i]=tail[i];
+        if(rec())return true;
+        paths[i].pop();head[i]=h0;done[i]=false;
+      }else{
+        owner[o]=i;freeCount--;head[i]=o;paths[i].push(o);
+        if(rec())return true;
+        paths[i].pop();head[i]=h0;freeCount++;owner[o]=-1;
+      }
+      if(timeout)return false;
+    }
+    return false;
+  }
+  const ok=rec();
+  return {ok,timeout,nodes,paths:ok?paths.map(p=>p.slice()):null};
+}
+
+function runSolve(){
+  const n=shape.reduce((a,b)=>a+b,0);
+  if(!n){setMsg('请先画出图形。','warn');return}
+  if(!pairs.length){setMsg('请先放置点对,或点“创建谜题”。','warn');return}
+  if(pending>=0){setMsg('还有一个起点没有放终点,请先放置终点(或点击该起点取消)。','warn');return}
+  const t0=Date.now();
+  const r=solver(t0+10000);
+  const ms=Date.now()-t0;
+  if(r.ok){sol=r.paths;render();
+    let h=`<div class="big ok">有解</div><div style="color:#777">用时 ${ms} ms,搜索 ${r.nodes} 个节点</div>`;
+    sol.forEach((p,i)=>{h+=`<div class="item"><span class="dot" style="background:${col(i)}"></span>点对 ${i+1}:${f(p[0])} → ${f(p[p.length-1])},共 ${p.length} 格</div>`});
+    resEl.innerHTML=h;keepMsg=true;
+  }else if(r.timeout){
+    sol=null;render();setMsg('<b>搜索超时</b>(10 秒),无法确定是否有解。请简化图形或增加点对。','warn');
+  }else{
+    sol=null;render();
+    resEl.innerHTML=`<div class="big bad">无解</div><div style="color:#555;margin-top:4px">已穷举(${r.nodes} 个节点,${ms} ms):不存在把图形所有格子填满的连线方案。</div>`;keepMsg=true;
+  }
+}
+
+// ===== 创建谜题:最小路径覆盖(每条路径≥2格) =====
 function components(){
   const seen=new Uint8Array(T),res=[];
   for(let s=0;s<T;s++){
     if(!shape[s]||seen[s])continue;
     const q=[s],cells=[];seen[s]=1;
     while(q.length){const v=q.pop();cells.push(v);
-      for(const u of adjAll[v])if(shape[u]&&!seen[u]){seen[u]=1;q.push(u)}}
+      for(const u of adj[v])if(shape[u]&&!seen[u]){seen[u]=1;q.push(u)}}
     res.push(cells);
   }
   return res;
 }
-
-function runSearch(cells,adj,k,limit,deadline){
+function runSearch(cells,k,limit,deadline){
   const inU=new Uint8Array(T);cells.forEach(v=>inU[v]=1);
   const seen=new Uint8Array(T);
   let nodes=0,aborted=false,remaining=cells.length;
@@ -163,121 +375,148 @@ function runSearch(cells,adj,k,limit,deadline){
 function solveK(cells,k,deadline){
   let limit=4000;
   while(true){
-    const r=runSearch(cells,adjAll,k,limit,deadline);
+    const r=runSearch(cells,k,limit,deadline);
     if(r.ok)return {status:'ok',paths:r.paths};
     if(!r.aborted)return {status:'fail'};
     if(Date.now()>deadline)return {status:'timeout'};
     limit*=2;
   }
 }
-function solveComp(cells){
-  if(cells.length<2)return {none:true,cells};
+function solveMin(cells){
+  if(cells.length<2)return {none:true};
   const kmax=Math.floor(cells.length/2);
   const feas=solveK(cells,kmax,Date.now()+2500);
-  if(feas.status==='fail')return {none:true,cells};
-  if(feas.status==='timeout')return {unknown:true,cells};
+  if(feas.status==='fail')return {none:true};
+  if(feas.status==='timeout')return {unknown:true};
   let b=0,w=0;
   for(const v of cells){if(((v/N|0)+v%N)&1)b++;else w++}
   const lb=Math.max(1,Math.abs(b-w));
   let proven=true;
-  for(let k=lb;k<kmax;k++){
+  for(let k=lb;k<feas.paths.length;k++){
     const r=solveK(cells,k,Date.now()+800);
-    if(r.status==='ok')return {cells,k,paths:r.paths,proven};
+    if(r.status==='ok')return {k:r.paths.length,proven};
     if(r.status==='timeout')proven=false;
   }
-  return {cells,k:feas.paths.length,paths:feas.paths,proven};
+  return {k:feas.paths.length,proven};
 }
 
-function color(i,total,l=50){return `hsl(${(i*137.508)%360},75%,${l}%)`}
+function createPuzzle(){
+  const n=shape.reduce((a,b)=>a+b,0);
+  if(!n){setMsg('请先画出图形。','warn');return}
+  if(n<2){setMsg('图形至少需要 2 个格子。','bad');return}
+  const comps=components();
+  const maxK=Math.floor(n/2);
+  const mins=[];let proven=true;
+  for(const c of comps){
+    const r=solveMin(c);
+    if(r.none){
+      setMsg(`<b>无法创建谜题</b>:图形中存在无法被“每条路线至少 2 格”覆盖的块(孤立的单格,或 T 形这类分叉过多的结构),请修改图形。`,'bad');
+      pairs=[];sol=null;answer=null;pending=-1;render_keep();return;
+    }
+    if(r.unknown){
+      setMsg(`<b>无法创建谜题</b>:图形过于复杂,搜索超时。请简化图形后重试。`,'warn');return;
+    }
+    mins.push(r.k);if(!r.proven)proven=false;
+  }
+  const minTotal=mins.reduce((a,b)=>a+b,0);
+  let note='';
+  let k=minTotal;
+  const raw=cntEl.value.trim();
+  if(raw!==''){
+    const x=Math.floor(+raw);
+    if(!(x>=1)){setMsg('点对数必须是正整数。','warn');return}
+    if(x>maxK){setMsg(`<b>无法创建</b>:点对数最多为 格子数÷2 = ${maxK}(当前图形 ${n} 格)。`,'bad');return}
+    if(x<minTotal){note=`<div class="warn">你输入的 ${x} 小于最少点对数,已改用最少值 ${minTotal}。</div>`;k=minTotal}
+    else k=x;
+  }
+  const deadline=Date.now()+8000;
+  let bestReach=0,result=null;
+  for(let attempt=0;attempt<60&&Date.now()<deadline&&!result;attempt++){
+    let paths=[],okAll=true;
+    for(let ci=0;ci<comps.length;ci++){
+      const r=solveK(comps[ci],mins[ci],Math.min(deadline,Date.now()+1500));
+      if(r.status!=='ok'){okAll=false;break}
+      paths.push(...r.paths);
+    }
+    if(!okAll)continue;
+    const reach=paths.reduce((a,p)=>a+(p.length>>1),0);
+    bestReach=Math.max(bestReach,reach);
+    if(reach<k)continue;
+    while(paths.length<k){
+      const idx=[];paths.forEach((p,i)=>{if(p.length>=4)idx.push(i)});
+      const pi=idx[Math.floor(Math.random()*idx.length)];
+      const p=paths[pi];
+      const cut=2+Math.floor(Math.random()*(p.length-3));
+      paths.splice(pi,1,p.slice(0,cut),p.slice(cut));
+    }
+    result=paths;
+  }
+  if(!result){
+    setMsg(`<b>无法创建 ${k} 个点对的谜题</b>:这个图形最少需要 ${minTotal} 个点对,`+
+      `按尝试到的方案最多只能到 ${Math.max(bestReach,minTotal)} 个。请减少点对数或修改图形。`,'bad');
+    return;
+  }
+  shuffle(result);
+  pairs=result.map(p=>Math.random()<.5?{s:p[0],t:p[p.length-1]}:{s:p[p.length-1],t:p[0]});
+  pending=-1;sol=null;answer=result.map(p=>p.slice());
+  render();
+  resEl.innerHTML=`<div class="big ok">谜题已创建</div>`+note+
+    `<div>当前图形 ${n} 格,创建了 <b>${pairs.length}</b> 个点对。</div>`+
+    `<div style="color:#777">最少点对数:${minTotal}${proven?'(已证明)':'(搜索得到,可能不是严格最小)'};上限:${maxK}。</div>`+
+    `<div style="color:#777;margin-top:4px">这个谜题至少有一个解。可以自己想,也可以点“求解”或“查看原答案”。</div>`;
+  keepMsg=true;
+}
+function render_keep(){const k=keepMsg;render();keepMsg=k}
 
+// ===== 绘制 =====
 function render(){
+  showAnsBtn.style.display=answer?'':'none';
   const colorOf=new Array(T).fill(null);
-  let paths=[];
-  if(comps){comps.forEach(c=>c.paths.forEach(p=>paths.push(p)));}
-  paths.forEach((p,i)=>p.forEach(v=>colorOf[v]=color(i,paths.length,55)));
-  const bad=new Set(failInfo?failInfo.bad:[]);
+  if(sol)sol.forEach((p,i)=>p.forEach(v=>colorOf[v]=i));
+  lines.forEach((p,i)=>p.forEach(v=>colorOf[v]=i));
+  if(drawing)drawing.forEach(v=>colorOf[v]=lines.length);
   for(let i=0;i<T;i++){
     const el=cellEls[i];
-    el.className='cell'+(shape[i]?' on':'')+(shape[i]&&colorOf[i]?' colored':'')+(bad.has(i)?' bad':'');
-    if(colorOf[i])el.style.setProperty('--bg',colorOf[i].replace('55%','88%'));
+    el.className='cell'+(shape[i]?' on':'')+(colorOf[i]!==null?' colored':'');
+    if(colorOf[i]!==null)el.style.setProperty('--bg',col(colorOf[i],88));
   }
+  const Pt=v=>[(v%N+.5)*S,((v/N|0)+.5)*S];
+  const poly=(p,i,dash)=>`<polyline fill="none" stroke="${col(i)}" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" opacity=".9" ${dash?'stroke-dasharray="1 14"':''} points="${p.map(v=>Pt(v).join(',')).join(' ')}"/>`;
+  const mark=(v,i,filled,fs)=>{
+    const [x,y]=Pt(v),c=col(i);
+    return filled?`<circle cx="${x}" cy="${y}" r="16" fill="${c}" stroke="#fff" stroke-width="2"/><text x="${x}" y="${y+fs/3}" font-size="${fs}" text-anchor="middle" font-weight="bold" fill="#fff">${i+1}</text>`
+      :`<circle cx="${x}" cy="${y}" r="16" fill="#fff" stroke="${c}" stroke-width="4"/><text x="${x}" y="${y+fs/3}" font-size="${fs}" text-anchor="middle" font-weight="bold" fill="${c}">${i+1}</text>`;
+  };
   let s='';
-  const P=v=>[(v%N+.5)*S,((v/N|0)+.5)*S];
-  paths.forEach((p,i)=>{
-    const col=color(i,paths.length,45);
-    s+=`<polyline fill="none" stroke="${col}" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" opacity=".9" points="${p.map(v=>P(v).join(',')).join(' ')}"/>`;
-    const [x1,y1]=P(p[0]),[x2,y2]=P(p[p.length-1]);
-    s+=`<circle cx="${x1}" cy="${y1}" r="15" fill="#fff" stroke="${col}" stroke-width="4"/><text x="${x1}" y="${y1+5}" font-size="14" text-anchor="middle" font-weight="bold" fill="${col}">起</text>`;
-    s+=`<circle cx="${x2}" cy="${y2}" r="15" fill="${col}" stroke="#fff" stroke-width="2"/><text x="${x2}" y="${y2+5}" font-size="14" text-anchor="middle" font-weight="bold" fill="#fff">终</text>`;
-  });
+  if(sol)sol.forEach((p,i)=>{s+=poly(p,i)});
+  lines.forEach((p,i)=>{s+=poly(p,i)});
+  if(drawing){
+    s+=poly(drawing,lines.length);
+    const [x,y]=Pt(drawing[drawing.length-1]);
+    s+=`<circle cx="${x}" cy="${y}" r="9" fill="${col(lines.length)}" stroke="#fff" stroke-width="2"/>`;
+  }
+  const fs=Math.max(pairs.length,lines.length)>9?11:14;
+  lines.forEach((p,i)=>{s+=mark(p[0],i,false,fs)+mark(p[p.length-1],i,true,fs)});
+  pairs.forEach((p,i)=>{s+=mark(p.s,i,false,fs)+mark(p.t,i,true,fs)});
+  if(pending>=0){
+    const [x,y]=Pt(pending),c=col(pairs.length);
+    s+=`<circle cx="${x}" cy="${y}" r="16" fill="#fff" stroke="${c}" stroke-width="4" stroke-dasharray="5 4"/><text x="${x}" y="${y+5}" font-size="14" text-anchor="middle" font-weight="bold" fill="${c}">${pairs.length+1}</text>`;
+  }
   svg.innerHTML=s;
-  renderResult(paths);
-}
-function renderResult(paths){
-  if(failInfo){
-    if(failInfo.type==='none'){
-      resultEl.innerHTML=`<div class="none">无解</div><div style="margin-top:6px;color:#555">${failInfo.msg}</div>`;
-    }else{
-      resultEl.innerHTML=`<div class="warn"><b>搜索超时</b>,无法确定是否有解。</div><div style="margin-top:6px;color:#555">${failInfo.msg}</div>`;
-    }
-    return;
-  }
-  if(!comps){
+  if(!keepMsg){
     const n=shape.reduce((a,b)=>a+b,0);
-    resultEl.innerHTML=n?`当前图形共 <b>${n}</b> 格。点击“计算最少点对”。`:'画好图形后点击“计算最少点对”。';
-    return;
+    let t;
+    if(mode==='line'){
+      const cells=lines.reduce((a,p)=>a+p.length,0);
+      t=`已画 <b>${lines.length}</b> 条线,共 <b>${cells}</b> 格。<br>按住拖动画线,画完点“由画线生成谜题”。`;
+    }else{
+      t=`图形 <b>${n}</b> 格,点对 <b>${pairs.length}</b> 个。`;
+      if(mode==='pair')t+=pending>=0?'<br>请点击<b>终点</b>(实心圆)。':'<br>点击一个格子作为<b>起点</b>(空心圆);点已有端点可删除点对。';
+      else t+='<br>点击或拖动绘制/擦除格子,画好后可点“创建谜题”。';
+    }
+    resEl.innerHTML=t;
   }
-  const total=paths.length,proven=comps.every(c=>c.proven);
-  let h=`<div>最少需要 <span class="big">${total}</span> 个点对</div>`;
-  h+=`<div class="${proven?'ok':'warn'}" style="margin:4px 0 8px">${proven?'✔ 已证明为最小值':'⚠ 搜索超时,该值为找到的最优方案(可能不是严格最小)'}</div>`;
-  h+=`<div style="color:#777;margin-bottom:6px">图形含 ${comps.length} 个互不相连的块;下面是其中一个随机方案(坐标为 行,列)</div>`;
-  paths.forEach((p,i)=>{
-    const f=v=>`(${(v/N|0)+1},${v%N+1})`;
-    h+=`<div class="item"><span class="dot" style="background:${color(i,total,45)}"></span>${f(p[0])} → ${f(p[p.length-1])},共 ${p.length} 格</div>`;
-  });
-  resultEl.innerHTML=h;
 }
-
-function calc(){
-  const n=shape.reduce((a,b)=>a+b,0);
-  if(!n){resultEl.textContent='请先画出图形!';return}
-  resultEl.textContent='计算中…';
-  setTimeout(()=>{
-    reset();
-    const rs=components().map(solveComp);
-    const none=rs.filter(r=>r.none);
-    const unk=rs.filter(r=>r.unknown);
-    if(none.length){
-      failInfo={type:'none',bad:none.flatMap(r=>r.cells),
-        msg:'红色区域无法被“起点≠终点”的路线完整覆盖(例如孤立的单格,或 T 形这类分叉过多的结构)。'};
-    }else if(unk.length){
-      failInfo={type:'unknown',bad:unk.flatMap(r=>r.cells),msg:'红色区域过于复杂,请简化图形后重试。'};
-    }else comps=rs;
-    render();
-  },30);
-}
-function reroll(){
-  if(!comps){calc();return}
-  resultEl.textContent='生成中…';
-  setTimeout(()=>{
-    comps=comps.map(c=>{
-      const r=solveK(c.cells,c.k,Date.now()+1500);
-      return r.status==='ok'?{...c,paths:r.paths}:c;
-    });
-    render();
-  },30);
-}
-document.getElementById('calc').onclick=calc;
-document.getElementById('reroll').onclick=reroll;
-document.getElementById('clear').onclick=()=>{shape.fill(0);reset();render()};
-document.getElementById('fill').onclick=()=>{shape.fill(1);reset();render()};
-document.getElementById('rnd').onclick=()=>{for(let i=0;i<T;i++)shape[i]=Math.random()<.6?1:0;reset();render()};
-document.getElementById('ring').onclick=()=>{
-  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
-    const d=Math.min(r,c,N-1-r,N-1-c);shape[i2(r,c)]=(d%2===0)?1:0;
-  }
-  reset();render();
-};
 render();
 </script>
 </body>
